@@ -371,7 +371,7 @@ source_install_klee()
 		cd klee
 		git fetch && git checkout "$KLEE_RELEASE"
 	else
-		git clone --recurse-submodules https://github.com/bolt-perf-contracts/klee.git
+		git clone --recurse-submodules https://github.com/tylerliu/klee.git
 		cd klee
 		git checkout "$KLEE_RELEASE"
 	fi
