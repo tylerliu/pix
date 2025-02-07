@@ -14,13 +14,15 @@ if [ -z ${PROMPT_COMMAND+x} ]; then
   export PROMPT_COMMAND=''
 fi
 
+CORES_COUNT=$(nproc)
+
 DPDK_RELEASE='18.11'
 KLEE_RELEASE='master'
-KLEE_UCLIBC_RELEASE='klee_uclibc_v1.2'
-LLVM_RELEASE=8.0.0
-PIN_RELEASE='3.16-98275-ge0db48c31'
-Z3_RELEASE='z3-4.5.0'
-OCAML_RELEASE='4.06.0'
+KLEE_UCLIBC_RELEASE='klee_uclibc_v1.4'
+LLVM_RELEASE=8.0.1
+PIN_RELEASE='external-3.31-98869-gfa6f126a8'
+Z3_RELEASE='z3-4.13.4'
+OCAML_RELEASE='4.14.2'
 
 ## Utility functions
 
@@ -213,7 +215,7 @@ source_install_dpdk()
 
 		# Compile
 		make config T=x86_64-native-linuxapp-gcc
-		make install -j T=x86_64-native-linuxapp-gcc DESTDIR=.
+		make install -j $CORES_COUNT T=x86_64-native-linuxapp-gcc DESTDIR=.
 
 		#Small hack for compilation of parse_fns required for NF only verif. 
 		cp x86_64-native-linuxapp-gcc/include/rte_string_fns.h lib/librte_cmdline/
@@ -271,7 +273,7 @@ source_install_z3()
 	if  [ ! -f "build/z3" ] || [ ! "z3-$(build/z3 --version | cut -f3 -d' ')" = "$Z3_RELEASE" ];	then
 		python scripts/mk_make.py -p "$BUILDDIR/z3/build"
 		cd build
-		make -kj || make
+		make -std=c++2a -kj $CORES_COUNT || make
 		make install
 	fi
 }
@@ -297,20 +299,29 @@ source_install_llvm()
 	cd "$BUILDDIR"
 
 	# TODO: Optimize. Currently we clone and build from scratch even if source is present but hasn't been built
-	if [ ! -f llvm/build/bin/clang-8 ] || [ ! -f llvm/build/bin/llvm-config ];
+	if [ ! -f $BUILDDIR/llvm/.version ] || [ "$(cat $BUILDDIR/llvm/.version)" != "$LLVM_RELEASE" ];
 	then
 		git clone --branch llvmorg-$LLVM_RELEASE --depth 1  \
 		https://github.com/llvm/llvm-project "$BUILDDIR/llvm-project"
 		mv "$BUILDDIR/llvm-project/llvm" "$BUILDDIR/llvm"
 		mv "$BUILDDIR/llvm-project/clang" "$BUILDDIR/llvm/tools/clang"
 		rm -rf "$BUILDDIR/llvm-project"
+		echo "$LLVM_RELEASE" > "$BUILDDIR/llvm/.version"
+	fi
+
+	if [ ! -f llvm/build/bin/clang-8 ] || [ ! -f llvm/build/bin/llvm-config ];
+	then
 		cd llvm
-	       	mkdir build
+		if [ ! -d build ]; then
+	    	mkdir -f build
+		fi
 		cd build
 		[ -f "Makefile" ] || \
 			CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0" \
-			cmake ../
-		make -j30
+			cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_USE_LINKER=gold \
+			-DZ3_INCLUDE_DIR="$BUILDDIR/z3/build/include" \
+			-DZ3_LIBRARIES="$BUILDDIR/z3/build/lib/libz3.so" ../
+		make -j $CORES_COUNT || make
 	fi
 }
 
@@ -377,25 +388,28 @@ clean_klee()
 bin_install_ocaml()
 {
 	# we depend on an OCaml package that needs libgmp-dev
-	package_install opam m4 libgmp-dev
+	package_install opam m4 libgmp-dev pkg-config
 
-	opam init -y
+	opam init --disable-sandboxing -y 
 	eval "$(opam config env)"
 	# Opam 1.x doesn't have "create", later versions require it but only the first time
 	if opam --version | grep '^1.' >/dev/null ; then
 		opam switch $OCAML_RELEASE
 	else
 		opam switch list
-		if ! opam switch list 2>&1 | grep -Fq 4.06 ; then
+		if ! opam switch list 2>&1 | grep -Fq $OCAML_RELEASE ; then
 			opam switch create $OCAML_RELEASE
 		fi
 	fi
 
-	line_multi "$PATHSFILE" 'PATH' "$HOME/.opam/system/bin:\$PATH"
     # `|| :` at the end of the following command ensures that in the event the
     # init.sh script fails, the shell will not exit. opam suggests we do this.
-	echo ". $HOME/.opam/opam-init/init.sh || :" >> "$PATHSFILE"
-	. "$PATHSFILE"
+	local line=". $HOME/.opam/opam-init/init.sh || :"
+	if ! grep -Fxq "$line" "$PATHSFILE"; then
+		line_multi "$PATHSFILE" 'PATH' "$HOME/.opam/system/bin:\$PATH"
+		echo "$line" >> "$PATHSFILE"
+		. "$PATHSFILE"
+    fi
 
 	# Codegenerator dependencies.
 	opam install goblint-cil core -y
