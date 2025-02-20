@@ -360,6 +360,9 @@ clean_klee_uclibc()
 
 source_install_klee()
 {
+	# klee depend on sqlite3 since v2.1
+	package_install libsqlite3-dev
+	pip install tabulate
 	line "$PATHSFILE" 'KLEE_INCLUDE' "$BUILDDIR/klee/include"
 	line_multi "$PATHSFILE" 'PATH' "$BUILDDIR/klee/build/bin:\$PATH"
 	# shellcheck source=../paths.sh
