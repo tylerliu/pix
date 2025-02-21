@@ -19,7 +19,7 @@ CORES_COUNT=$(nproc)
 DPDK_RELEASE='18.11'
 KLEE_RELEASE='master'
 KLEE_UCLIBC_RELEASE='klee_uclibc_v1.4'
-LLVM_RELEASE=8.0.1
+LLVM_RELEASE=10.0.1
 PIN_RELEASE='3.28-98749-g6643ecee5'
 Z3_RELEASE='z3-4.13.4'
 OCAML_RELEASE='4.14.2'
@@ -309,16 +309,16 @@ source_install_llvm()
 		echo "$LLVM_RELEASE" > "$BUILDDIR/llvm/.version"
 	fi
 
-	if [ ! -f llvm/build/bin/clang-8 ] || [ ! -f llvm/build/bin/llvm-config ];
+	if [ ! -f "llvm/build/bin/clang-${LLVM_RELEASE%.*.*}" ] || [ ! -f llvm/build/bin/llvm-config ];
 	then
 		cd llvm
 		if [ ! -d build ]; then
-	    	mkdir -f build
+	    	mkdir build
 		fi
 		cd build
 		[ -f "Makefile" ] || \
 			CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0" \
-			cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_USE_LINKER=gold \
+			cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_USE_LINKER=gold -DLLVM_ENABLE_DUMP=ON \
 			-DZ3_INCLUDE_DIR="$BUILDDIR/z3/build/include" \
 			-DZ3_LIBRARIES="$BUILDDIR/z3/build/lib/libz3.so" ../
 		make -j $CORES_COUNT || make
