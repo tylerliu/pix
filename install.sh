@@ -273,7 +273,7 @@ source_install_z3()
 	if  [ ! -f "build/z3" ] || [ ! "z3-$(build/z3 --version | cut -f3 -d' ')" = "$Z3_RELEASE" ];	then
 		python scripts/mk_make.py -p "$BUILDDIR/z3/build"
 		cd build
-		make -std=c++2a -kj $CORES_COUNT || make
+		make -kj $CORES_COUNT || make
 		make install
 	fi
 }
@@ -516,7 +516,6 @@ package_install \
 	curl \
 	git \
 	libgoogle-perftools-dev \
-	python2.7 \
 	python3-minimal \
 	python3-pip \
 	parallel \
