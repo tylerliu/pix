@@ -349,7 +349,8 @@ source_install_klee_uclibc()
 		--with-cc="../llvm/build/bin/clang"
 
 	cp "$VNDSDIR/install/klee-uclibc.config" '.config'
-	make -kj
+	make -kj $CORE_COUNT
+        make
 }
 
 clean_klee_uclibc()
