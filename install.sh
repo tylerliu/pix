@@ -204,7 +204,7 @@ source_install_dpdk()
 		# get sources
 		rm -rf dpdk
 		curl -s "https://fast.dpdk.org/rel/dpdk-$DPDK_RELEASE.tar.xz" | tar xJf -
-		mv "dpdk-$DPDK_RELEASE" dpdk
+		mv "dpdk-stable-$DPDK_RELEASE" dpdk
 
 		# patch - only apply patches that are still relevant for verification
 		cd dpdk
@@ -214,7 +214,7 @@ source_install_dpdk()
 		done
 		# Must be applied last.
 		patch -p1 < "$VNDSDIR/install/replay.dpdk.patch"
-		
+
 		# Configure and build with meson
 		meson setup build
 		cd build
