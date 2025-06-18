@@ -69,10 +69,10 @@ index bb5dfd2..26b1d79 100644
  {
  	return rte_le_to_cpu_32(IXGBE_PCI_REG(addr));
  }
-diff --git a/lib/librte_eal/common/include/generic/rte_io.h b/lib/librte_eal/common/include/generic/rte_io.h
+diff --git a/lib/eal/common/include/generic/rte_io.h b/lib/eal/common/include/generic/rte_io.h
 index 0b88c34..3c11bfe 100644
---- a/lib/librte_eal/common/include/generic/rte_io.h
-+++ b/lib/librte_eal/common/include/generic/rte_io.h
+--- a/lib/eal/common/include/generic/rte_io.h
++++ b/lib/eal/common/include/generic/rte_io.h
 @@ -328,7 +328,7 @@ rte_read16(const volatile void *addr)
  	return val;
  }

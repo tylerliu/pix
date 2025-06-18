@@ -1,8 +1,8 @@
  This folder contains patches and configuration files for dependencies of the Bolt toolchain, namely:
-- DPDK patches
+- DPDK patches (for DPDK 22.11.8 with meson/ninja build system)
   - `bugfixes` fixes bugs found in DPDK (all reported)
   - `clean` contains minor cleanups that do not affect correctness, only ease of verification
-  - `config` patches the DPDK default config
+  - `config` patches the DPDK default config (may not apply to meson-based builds)
 - DPDK patches for the `ixgbe` driver:
   - `avoid_bit_bang` avoids unnecessary usage of bit-banging during initialization
   - `no_rxen_on_fctrl_write` ensures the FCTRL bit is written to according to the spec (reported)
@@ -16,3 +16,7 @@
   - `wrong_register_dpf_pmcf` removes the usage of bits that should be in another register on the 82599
   - `hacks` contains unfortunate hacks for verification :-(
 - A minimalistic config file for `klee-uclibc`
+
+Note: DPDK 22.11.8 uses the meson/ninja build system instead of the old make-based system. 
+Some patches may not apply cleanly and may need manual adjustment. The installation script 
+will warn about patches that don't apply cleanly but continue with the build process.

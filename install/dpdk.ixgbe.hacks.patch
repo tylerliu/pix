@@ -119,10 +119,10 @@ index 9bc8462..f9807d5 100644
  			}
  		}
  		if (rxq->rx_nb_avail) {
-diff --git a/lib/librte_mbuf/rte_mbuf.h b/lib/librte_mbuf/rte_mbuf.h
+diff --git a/lib/mbuf/rte_mbuf.h b/lib/mbuf/rte_mbuf.h
 index ce8a05d..3e6b0b7 100644
---- a/lib/librte_mbuf/rte_mbuf.h
-+++ b/lib/librte_mbuf/rte_mbuf.h
+--- a/lib/mbuf/rte_mbuf.h
++++ b/lib/mbuf/rte_mbuf.h
 @@ -905,7 +905,9 @@ rte_mbuf_raw_free(struct rte_mbuf *m)
  	RTE_ASSERT(m->next == NULL);
  	RTE_ASSERT(m->nb_segs == 1);

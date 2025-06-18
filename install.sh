@@ -189,7 +189,8 @@ source_install_dpdk()
 		gperf \
 		libgoogle-perftools-dev \
 		libpcap-dev \
-		pkg-config
+		pkg-config \
+		python3-pyelftools
 
 	# Ensure environment is correct.
 	line "$PATHSFILE" 'RTE_TARGET' 'x86_64-native-linuxapp-gcc'
