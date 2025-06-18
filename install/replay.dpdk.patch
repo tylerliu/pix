@@ -13,10 +13,10 @@ index 6fda870..879bb15 100644
  	return nb_pkts;
  }
  
-diff --git a/lib/librte_eal/common/include/arch/x86/rte_cycles.h b/lib/librte_eal/common/include/arch/x86/rte_cycles.h
+diff --git a/lib/eal/common/include/arch/x86/rte_cycles.h b/lib/eal/common/include/arch/x86/rte_cycles.h
 index 1bb3e1d..c948258 100644
---- a/lib/librte_eal/common/include/arch/x86/rte_cycles.h
-+++ b/lib/librte_eal/common/include/arch/x86/rte_cycles.h
+--- a/lib/eal/common/include/arch/x86/rte_cycles.h
++++ b/lib/eal/common/include/arch/x86/rte_cycles.h
 @@ -48,41 +48,49 @@ extern int rte_cycles_vmware_tsc_map;
  #endif
  #include <rte_common.h>
@@ -89,10 +89,10 @@ index 1bb3e1d..c948258 100644
  
  static inline uint64_t
  rte_get_tsc_cycles(void) { return rte_rdtsc(); }
-diff --git a/lib/librte_eal/common/include/arch/x86/rte_memcpy.h b/lib/librte_eal/common/include/arch/x86/rte_memcpy.h
+diff --git a/lib/eal/common/include/arch/x86/rte_memcpy.h b/lib/eal/common/include/arch/x86/rte_memcpy.h
 index 74c280c..b2f84d8 100644
---- a/lib/librte_eal/common/include/arch/x86/rte_memcpy.h
-+++ b/lib/librte_eal/common/include/arch/x86/rte_memcpy.h
+--- a/lib/eal/common/include/arch/x86/rte_memcpy.h
++++ b/lib/eal/common/include/arch/x86/rte_memcpy.h
 @@ -65,8 +65,13 @@ extern "C" {
   * @return
   *   Pointer to the destination data.
@@ -133,10 +133,10 @@ index 74c280c..b2f84d8 100644
  #endif /* _RTE_MEMCPY_X86_64_H_ */
 +
 + 
-diff --git a/lib/librte_eal/common/include/arch/x86/rte_prefetch.h b/lib/librte_eal/common/include/arch/x86/rte_prefetch.h
+diff --git a/lib/eal/common/include/arch/x86/rte_prefetch.h b/lib/eal/common/include/arch/x86/rte_prefetch.h
 index f464398..fffe630 100644
---- a/lib/librte_eal/common/include/arch/x86/rte_prefetch.h
-+++ b/lib/librte_eal/common/include/arch/x86/rte_prefetch.h
+--- a/lib/eal/common/include/arch/x86/rte_prefetch.h
++++ b/lib/eal/common/include/arch/x86/rte_prefetch.h
 @@ -41,25 +41,34 @@ extern "C" {
  #include <rte_common.h>
  #include "generic/rte_prefetch.h"
@@ -177,10 +177,10 @@ index f464398..fffe630 100644
  
  #ifdef __cplusplus
  }
-diff --git a/lib/librte_eal/common/include/generic/rte_prefetch.h b/lib/librte_eal/common/include/generic/rte_prefetch.h
+diff --git a/lib/eal/common/include/generic/rte_prefetch.h b/lib/eal/common/include/generic/rte_prefetch.h
 index 07e409e..9d59c21 100644
---- a/lib/librte_eal/common/include/generic/rte_prefetch.h
-+++ b/lib/librte_eal/common/include/generic/rte_prefetch.h
+--- a/lib/eal/common/include/generic/rte_prefetch.h
++++ b/lib/eal/common/include/generic/rte_prefetch.h
 @@ -34,6 +34,12 @@
  #ifndef _RTE_PREFETCH_H_
  #define _RTE_PREFETCH_H_
@@ -228,10 +228,10 @@ index 07e409e..9d59c21 100644
 +STATIC void rte_prefetch_non_temporal(const volatile void *p);
  
  #endif /* _RTE_PREFETCH_H_ */
-diff --git a/lib/librte_hash/rte_cmp_arm64.h b/lib/librte_hash/rte_cmp_arm64.h
+diff --git a/lib/hash/rte_cmp_arm64.h b/lib/hash/rte_cmp_arm64.h
 index 950cef3..cb49e94 100644
---- a/lib/librte_hash/rte_cmp_arm64.h
-+++ b/lib/librte_hash/rte_cmp_arm64.h
+--- a/lib/hash/rte_cmp_arm64.h
++++ b/lib/hash/rte_cmp_arm64.h
 @@ -36,21 +36,27 @@ static int
  rte_hash_k16_cmp_eq(const void *key1, const void *key2,
  		    size_t key_len __rte_unused)
@@ -274,10 +274,10 @@ index 950cef3..cb49e94 100644
  }
  
  static int
-diff --git a/lib/librte_hash/rte_cmp_x86.h b/lib/librte_hash/rte_cmp_x86.h
+diff --git a/lib/hash/rte_cmp_x86.h b/lib/hash/rte_cmp_x86.h
 index 704c2de..4f332f5 100644
---- a/lib/librte_hash/rte_cmp_x86.h
-+++ b/lib/librte_hash/rte_cmp_x86.h
+--- a/lib/hash/rte_cmp_x86.h
++++ b/lib/hash/rte_cmp_x86.h
 @@ -35,11 +35,16 @@
  static int
  rte_hash_k16_cmp_eq(const void *key1, const void *key2, size_t key_len __rte_unused)
@@ -299,10 +299,10 @@ index 704c2de..4f332f5 100644
  }
  
  static int
-diff --git a/lib/librte_hash/rte_thash.h b/lib/librte_hash/rte_thash.h
+diff --git a/lib/hash/rte_thash.h b/lib/hash/rte_thash.h
 index 4fa5e07..3c2a714 100644
---- a/lib/librte_hash/rte_thash.h
-+++ b/lib/librte_hash/rte_thash.h
+--- a/lib/hash/rte_thash.h
++++ b/lib/hash/rte_thash.h
 @@ -169,18 +169,18 @@ rte_convert_rss_key(const uint32_t *orig, uint32_t *targ, int len)
  static inline void
  rte_thash_load_v6_addrs(const struct ipv6_hdr *orig, union rte_thash_tuple *targ)
@@ -334,10 +334,10 @@ index 4fa5e07..3c2a714 100644
  #else
  	int i;
  	for (i = 0; i < 4; i++) {
-diff --git a/lib/librte_table/rte_lru.h b/lib/librte_table/rte_lru.h
+diff --git a/lib/table/rte_lru.h b/lib/table/rte_lru.h
 index 88229d8..afd5916 100644
---- a/lib/librte_table/rte_lru.h
-+++ b/lib/librte_table/rte_lru.h
+--- a/lib/table/rte_lru.h
++++ b/lib/table/rte_lru.h
 @@ -10,9 +10,9 @@ extern "C" {
  #endif
  

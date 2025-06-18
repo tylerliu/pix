@@ -1,7 +1,7 @@
-diff --git a/lib/librte_eal/linuxapp/eal/eal.c b/lib/librte_eal/linuxapp/eal/eal.c
+diff --git a/lib/eal/linux/eal.c b/lib/eal/linux/eal.c
 index 3fb2188..952aa25 100644
---- a/lib/librte_eal/linuxapp/eal/eal.c
-+++ b/lib/librte_eal/linuxapp/eal/eal.c
+--- a/lib/eal/linux/eal.c
++++ b/lib/eal/linux/eal.c
 @@ -170,11 +170,11 @@ rte_eal_config_create(void)
  	void *rte_mem_cfg_addr;
  	int retval;
@@ -30,10 +30,10 @@ index 3fb2188..952aa25 100644
  	if (mem_cfg_fd < 0){
  		mem_cfg_fd = open(pathname, O_RDWR);
  		if (mem_cfg_fd < 0)
-diff --git a/lib/librte_eal/common/eal_common_options.c b/lib/librte_eal/common/eal_common_options.c
+diff --git a/lib/eal/common/eal_common_options.c b/lib/eal/common/eal_common_options.c
 index 4d7dbac..bcca599 100644
---- a/lib/librte_eal/common/eal_common_options.c
-+++ b/lib/librte_eal/common/eal_common_options.c
+--- a/lib/eal/common/eal_common_options.c
++++ b/lib/eal/common/eal_common_options.c
 @@ -959,7 +959,7 @@ eal_check_common_options(struct internal_config *internal_cfg)
  		RTE_LOG(ERR, EAL, "Invalid process type specified\n");
  		return -1;
@@ -43,10 +43,10 @@ index 4d7dbac..bcca599 100644
  		RTE_LOG(ERR, EAL, "Invalid char, '%%', in --"OPT_FILE_PREFIX" "
  			"option\n");
  		return -1;
-diff --git a/lib/librte_ethdev/rte_ethdev.c b/lib/librte_ethdev/rte_ethdev.c
+diff --git a/lib/ethdev/rte_ethdev.c b/lib/ethdev/rte_ethdev.c
 index 318af28..02b8ad8 100644
---- a/lib/librte_ethdev/rte_ethdev.c
-+++ b/lib/librte_ethdev/rte_ethdev.c
+--- a/lib/ethdev/rte_ethdev.c
++++ b/lib/ethdev/rte_ethdev.c
 @@ -485,7 +485,8 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
  		rxq = dev->data->rx_queues;
  

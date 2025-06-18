@@ -16,7 +16,7 @@ fi
 
 CORES_COUNT=$(nproc)
 
-DPDK_RELEASE='18.11'
+DPDK_RELEASE='22.11.8'
 KLEE_RELEASE='master'
 KLEE_UCLIBC_RELEASE='klee_uclibc_v1.4'
 LLVM_RELEASE=10.0.1
@@ -182,11 +182,15 @@ source_install_dpdk()
 			;;
 	esac
 
-	# Install other dependencies
+	# Install meson and ninja build tools
 	package_install \
+		meson \
+		ninja-build \
 		gperf \
 		libgoogle-perftools-dev \
-		libpcap-dev
+		libpcap-dev \
+		pkg-config \
+		python3-pyelftools
 
 	# Ensure environment is correct.
 	line "$PATHSFILE" 'RTE_TARGET' 'x86_64-native-linuxapp-gcc'
@@ -201,10 +205,9 @@ source_install_dpdk()
 		# get sources
 		rm -rf dpdk
 		curl -s "https://fast.dpdk.org/rel/dpdk-$DPDK_RELEASE.tar.xz" | tar xJf -
-		mv "dpdk-$DPDK_RELEASE" dpdk
+		mv "dpdk-stable-$DPDK_RELEASE" dpdk
 
-
-		# patch
+		# patch - only apply patches that are still relevant for verification
 		cd dpdk
 		for p in "$VNDSDIR"/install/dpdk.*.patch;
 		do
@@ -213,9 +216,11 @@ source_install_dpdk()
 		# Must be applied last.
 		patch -p1 < "$VNDSDIR/install/replay.dpdk.patch"
 
-		# Compile
-		make config T=x86_64-native-linuxapp-gcc
-		make install -j $CORES_COUNT T=x86_64-native-linuxapp-gcc DESTDIR=.
+		# Configure and build with meson
+		meson setup build
+		cd build
+		ninja
+		ninja install DESTDIR=.
 
 		#Small hack for compilation of parse_fns required for NF only verif. 
 		cp x86_64-native-linuxapp-gcc/include/rte_string_fns.h lib/librte_cmdline/
