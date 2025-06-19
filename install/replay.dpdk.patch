@@ -213,7 +213,7 @@ index 07e409e..9d59c21 100644
  
  /**
   * Prefetch a cache line into all cache levels (non-temporal/transient version)
-@@ -51,6 +57,8 @@ static inline void rte_prefetch2(const volatile void *p);
+@@ -51,7 +57,9 @@ static inline void rte_prefetch2(const volatile void *p);
   * @param p
   *   Address to prefetch
   */
@@ -222,7 +222,8 @@ index 07e409e..9d59c21 100644
  
 +#undef STATIC
 +
- #endif /* _RTE_PREFETCH_H_ */
+ /**
+  * @warning
 diff --git a/lib/hash/rte_cmp_arm64.h b/lib/hash/rte_cmp_arm64.h
 index 950cef3..cb49e94 100644
 --- a/lib/hash/rte_cmp_arm64.h
