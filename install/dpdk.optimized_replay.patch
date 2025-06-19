@@ -2,7 +2,7 @@ diff --git a/drivers/net/ixgbe/base/ixgbe_82599.c b/drivers/net/ixgbe/base/ixgbe
 index 7166d04..7a522f2 100644
 --- a/drivers/net/ixgbe/base/ixgbe_82599.c
 +++ b/drivers/net/ixgbe/base/ixgbe_82599.c
-@@ -2370,6 +2370,9 @@ STATIC s32 ixgbe_read_eeprom_buffer_82599(struct ixgbe_hw *hw, u16 offset,
+@@ -2358,6 +2358,9 @@ STATIC s32 ixgbe_read_eeprom_buffer_82599(struct ixgbe_hw *hw, u16 offset,
  	return ret_val;
  }
  
@@ -12,7 +12,7 @@ index 7166d04..7a522f2 100644
  /**
   *  ixgbe_read_eeprom_82599 - Read EEPROM word using
   *  fastest available method
-@@ -2423,6 +2426,11 @@ STATIC s32 ixgbe_read_eeprom_82599(struct ixgbe_hw *hw,
+@@ -2455,6 +2458,11 @@ STATIC s32 ixgbe_read_eeprom_82599(struct ixgbe_hw *hw,
  
  	DEBUGFUNC("ixgbe_read_eeprom_82599");
  
