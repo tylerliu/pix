@@ -2,7 +2,7 @@ diff --git a/drivers/net/ixgbe/ixgbe_rxtx.c b/drivers/net/ixgbe/ixgbe_rxtx.c
 index 9bc8462..f9807d5 100644
 --- a/drivers/net/ixgbe/ixgbe_rxtx.c
 +++ b/drivers/net/ixgbe/ixgbe_rxtx.c
-@@ -278,8 +278,10 @@ tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+@@ -249,8 +249,10 @@ tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
  	if (unlikely(nb_pkts == 0))
  		return 0;
  
@@ -13,7 +13,7 @@ index 9bc8462..f9807d5 100644
  
  	/*
  	 * At this point, we know there are enough descriptors in the
-@@ -333,7 +335,9 @@ tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+@@ -304,7 +306,9 @@ tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
  	 * Check for wrap-around. This would only happen if we used
  	 * up to the last descriptor in the ring, no more, no less.
  	 */
@@ -23,7 +23,7 @@ index 9bc8462..f9807d5 100644
  		txq->tx_tail = 0;
  
  	/* update tail pointer */
-@@ -1595,9 +1599,11 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
+@@ -1618,9 +1622,11 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
  	}
  
  	/* clear software ring entries so we can cleanup correctly */
@@ -35,7 +35,7 @@ index 9bc8462..f9807d5 100644
  
  
  	return nb_rx;
-@@ -1685,7 +1691,9 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+@@ -1708,7 +1614,9 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
  	/* update internal queue state */
  	rxq->rx_next_avail = 0;
  	rxq->rx_nb_avail = nb_rx;
@@ -45,7 +45,7 @@ index 9bc8462..f9807d5 100644
  
  	/* if required, allocate new buffers to replenish descriptors */
  	if (rxq->rx_tail > rxq->rx_free_trigger) {
-@@ -1719,8 +1727,10 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+@@ -1742,8 +1750,10 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
  					    cur_free_trigger);
  	}
  
@@ -56,7 +56,7 @@ index 9bc8462..f9807d5 100644
  
  	/* received any packets this loop? */
  	if (rxq->rx_nb_avail)
-@@ -1863,7 +1873,9 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+@@ -1897,7 +1907,9 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
  		}
  
  		rxm = rxe->mbuf;
@@ -66,7 +66,7 @@ index 9bc8462..f9807d5 100644
  		dma_addr =
  			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
  		rxdp->read.hdr_addr = 0;
-@@ -1921,7 +1933,9 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+@@ -1957,7 +1969,9 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
  		 */
  		rx_pkts[nb_rx++] = rxm;
  	}
@@ -76,7 +76,7 @@ index 9bc8462..f9807d5 100644
  
  	/*
  	 * If the number of free RX descriptors is greater than the RX free
-@@ -2164,13 +2178,18 @@ ixgbe_recv_pkts_lro(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
+@@ -2185,13 +2199,18 @@ ixgbe_recv_pkts_lro(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
  			 * Update RX descriptor with the physical address of the
  			 * new data buffer of the new allocated mbuf.
  			 */
@@ -96,7 +96,7 @@ index 9bc8462..f9807d5 100644
  
  		/*
  		 * Set data length & data buffer address of mbuf.
-@@ -2266,10 +2285,12 @@ ixgbe_recv_pkts_lro(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
+@@ -2287,10 +2306,12 @@ ixgbe_recv_pkts_lro(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
  		rx_pkts[nb_rx++] = first_seg;
  	}
  
@@ -109,7 +109,7 @@ index 9bc8462..f9807d5 100644
  
  	/*
  	 * If the number of free RX descriptors is greater than the RX free
-@@ -2666,7 +2687,9 @@ ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
+@@ -2853,7 +2874,9 @@ ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
  		for (i = 0; i < rxq->nb_rx_desc; i++) {
  			if (rxq->sw_ring[i].mbuf != NULL) {
  				rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
@@ -123,13 +123,14 @@ diff --git a/lib/mbuf/rte_mbuf.h b/lib/mbuf/rte_mbuf.h
 index ce8a05d..3e6b0b7 100644
 --- a/lib/mbuf/rte_mbuf.h
 +++ b/lib/mbuf/rte_mbuf.h
-@@ -905,7 +905,9 @@ rte_mbuf_raw_free(struct rte_mbuf *m)
- 	RTE_ASSERT(m->next == NULL);
- 	RTE_ASSERT(m->nb_segs == 1);
- 	__rte_mbuf_sanity_check(m, 0);
+@@ -623,7 +623,9 @@ rte_mbuf_raw_free(struct rte_mbuf *m)
+ 	RTE_ASSERT(!RTE_MBUF_CLONED(m) &&
+ 		  (!RTE_MBUF_HAS_EXTBUF(m) || RTE_MBUF_HAS_PINNED_EXTBUF(m)));
+ 	__rte_mbuf_raw_sanity_check(m);
 +#ifndef KLEE_VERIFICATION
  	rte_mempool_put(m->pool, m);
 +#endif
  }
  
- /* compat with older versions */
+ /**
+

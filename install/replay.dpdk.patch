@@ -2,7 +2,7 @@ diff --git a/drivers/net/ixgbe/ixgbe_rxtx.c b/drivers/net/ixgbe/ixgbe_rxtx.c
 index 6fda870..879bb15 100644
 --- a/drivers/net/ixgbe/ixgbe_rxtx.c
 +++ b/drivers/net/ixgbe/ixgbe_rxtx.c
-@@ -344,6 +344,10 @@ tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+@@ -315,6 +315,10 @@ tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
  	rte_wmb();
  	IXGBE_PCI_REG_WRITE_RELAXED(txq->tdt_reg_addr, txq->tx_tail);
  
@@ -13,11 +13,11 @@ index 6fda870..879bb15 100644
  	return nb_pkts;
  }
  
-diff --git a/lib/eal/common/include/arch/x86/rte_cycles.h b/lib/eal/common/include/arch/x86/rte_cycles.h
+diff --git a/lib/eal/x86/include/rte_cycles.h b/lib/eal/x86/include/rte_cycles.h
 index 1bb3e1d..c948258 100644
---- a/lib/eal/common/include/arch/x86/rte_cycles.h
-+++ b/lib/eal/common/include/arch/x86/rte_cycles.h
-@@ -48,41 +48,49 @@ extern int rte_cycles_vmware_tsc_map;
+--- a/lib/eal/x86/include/rte_cycles.h
++++ b/lib/eal/x86/include/rte_cycles.h
+@@ -20,41 +20,49 @@ extern int rte_cycles_vmware_tsc_map;
  #endif
  #include <rte_common.h>
  
@@ -89,11 +89,11 @@ index 1bb3e1d..c948258 100644
  
  static inline uint64_t
  rte_get_tsc_cycles(void) { return rte_rdtsc(); }
-diff --git a/lib/eal/common/include/arch/x86/rte_memcpy.h b/lib/eal/common/include/arch/x86/rte_memcpy.h
+diff --git a/lib/eal/x86/include/rte_memcpy.h b/lib/eal/x86/include/rte_memcpy.h
 index 74c280c..b2f84d8 100644
---- a/lib/eal/common/include/arch/x86/rte_memcpy.h
-+++ b/lib/eal/common/include/arch/x86/rte_memcpy.h
-@@ -65,8 +65,13 @@ extern "C" {
+--- a/lib/eal/x86/include/rte_memcpy.h
++++ b/lib/eal/x86/include/rte_memcpy.h
+@@ -42,8 +42,13 @@ extern "C" {
   * @return
   *   Pointer to the destination data.
   */
@@ -107,37 +107,28 @@ index 74c280c..b2f84d8 100644
  
  #ifdef RTE_MACHINE_CPUFLAG_AVX512F
  
-@@ -888,17 +893,21 @@ rte_memcpy_aligned(void *dst, const void *src, size_t n)
+@@ -859,14 +864,16 @@ rte_memcpy_aligned(void *dst, const void *src, size_t n)
  	return ret;
  }
  
 +#ifndef KLEE_VERIFICATION
- static inline void *
+ static __rte_always_inline void *
  rte_memcpy(void *dst, const void *src, size_t n)
  {
--	if (!(((uintptr_t)dst | (uintptr_t)src) & ALIGNMENT_MASK))
--		return rte_memcpy_aligned(dst, src, n);
--	else
--		return rte_memcpy_generic(dst, src, n);
-+       if (!(((uintptr_t)dst | (uintptr_t)src) & ALIGNMENT_MASK))
-+               return rte_memcpy_aligned(dst, src, n);
-+       else
-+               return rte_memcpy_generic(dst, src, n);
+ 	if (!(((uintptr_t)dst | (uintptr_t)src) & ALIGNMENT_MASK))
+ 		return rte_memcpy_aligned(dst, src, n);
+ 	else
+ 		return rte_memcpy_generic(dst, src, n);
  }
 +#endif//!KLEE_VERIFICATION
  
- #ifdef __cplusplus
- }
- #endif
- 
- #endif /* _RTE_MEMCPY_X86_64_H_ */
-+
-+ 
-diff --git a/lib/eal/common/include/arch/x86/rte_prefetch.h b/lib/eal/common/include/arch/x86/rte_prefetch.h
+ #undef ALIGNMENT_MASK
+
+diff --git a/lib/eal/x86/include/rte_prefetch.h b/lib/eal/x86/include/rte_prefetch.h
 index f464398..fffe630 100644
---- a/lib/eal/common/include/arch/x86/rte_prefetch.h
-+++ b/lib/eal/common/include/arch/x86/rte_prefetch.h
-@@ -41,25 +41,34 @@ extern "C" {
+--- a/lib/eal/x86/include/rte_prefetch.h
++++ b/lib/eal/x86/include/rte_prefetch.h
+@@ -13,25 +13,34 @@ extern "C" {
  #include <rte_common.h>
  #include "generic/rte_prefetch.h"
  
@@ -177,29 +168,31 @@ index f464398..fffe630 100644
  
  #ifdef __cplusplus
  }
-diff --git a/lib/eal/common/include/generic/rte_prefetch.h b/lib/eal/common/include/generic/rte_prefetch.h
+diff --git a/lib/eal/include/generic/rte_prefetch.h b/lib/eal/include/generic/rte_prefetch.h
 index 07e409e..9d59c21 100644
---- a/lib/eal/common/include/generic/rte_prefetch.h
-+++ b/lib/eal/common/include/generic/rte_prefetch.h
-@@ -34,6 +34,12 @@
+--- a/lib/eal/include/generic/rte_prefetch.h
++++ b/lib/eal/include/generic/rte_prefetch.h
+@@ -5,8 +5,14 @@
  #ifndef _RTE_PREFETCH_H_
  #define _RTE_PREFETCH_H_
+
+ #include <rte_compat.h>
  
 +#ifdef KLEE_VERIFICATION
-+#define STATIC
-+#else//KLEE_VERIFICATION
-+#define STATIC static inline
-+#endif//KLEE_VERIFICATION
++#define STATIC2
++#else // KLEE_VERIFICATION
++#define STATIC2 static inline
++#endif // KLEE_VERIFICATION
 +
  /**
   * @file
   *
-@@ -51,14 +57,14 @@
+@@ -24,14 +30,14 @@
   * @param p
   *   Address to prefetch
   */
 -static inline void rte_prefetch0(const volatile void *p);
-+STATIC void rte_prefetch0(const volatile void *p);
++STATIC2 void rte_prefetch0(const volatile void *p);
  
  /**
   * Prefetch a cache line into all cache levels except the 0th cache level.
@@ -207,32 +200,35 @@ index 07e409e..9d59c21 100644
   *   Address to prefetch
   */
 -static inline void rte_prefetch1(const volatile void *p);
-+STATIC void rte_prefetch1(const volatile void *p);
++STATIC2 void rte_prefetch1(const volatile void *p);
  
  /**
   * Prefetch a cache line into all cache levels except the 0th and 1th cache
-@@ -66,7 +72,7 @@ static inline void rte_prefetch1(const volatile void *p);
+@@ -39,7 +45,7 @@ static inline void rte_prefetch1(const volatile void *p);
   * @param p
   *   Address to prefetch
   */
 -static inline void rte_prefetch2(const volatile void *p);
-+STATIC void rte_prefetch2(const volatile void *p);
++STATIC2 void rte_prefetch2(const volatile void *p);
  
  /**
   * Prefetch a cache line into all cache levels (non-temporal/transient version)
-@@ -78,6 +84,6 @@ static inline void rte_prefetch2(const volatile void *p);
+@@ -51,7 +57,9 @@ static inline void rte_prefetch2(const volatile void *p);
   * @param p
   *   Address to prefetch
   */
 -static inline void rte_prefetch_non_temporal(const volatile void *p);
-+STATIC void rte_prefetch_non_temporal(const volatile void *p);
++STATIC2 void rte_prefetch_non_temporal(const volatile void *p);
  
- #endif /* _RTE_PREFETCH_H_ */
++#undef STATIC2
++
+ /**
+  * @warning
 diff --git a/lib/hash/rte_cmp_arm64.h b/lib/hash/rte_cmp_arm64.h
 index 950cef3..cb49e94 100644
 --- a/lib/hash/rte_cmp_arm64.h
 +++ b/lib/hash/rte_cmp_arm64.h
-@@ -36,21 +36,27 @@ static int
+@@ -7,21 +7,27 @@ static int
  rte_hash_k16_cmp_eq(const void *key1, const void *key2,
  		    size_t key_len __rte_unused)
  {
@@ -278,7 +274,7 @@ diff --git a/lib/hash/rte_cmp_x86.h b/lib/hash/rte_cmp_x86.h
 index 704c2de..4f332f5 100644
 --- a/lib/hash/rte_cmp_x86.h
 +++ b/lib/hash/rte_cmp_x86.h
-@@ -35,11 +35,16 @@
+@@ -8,11 +8,16 @@
  static int
  rte_hash_k16_cmp_eq(const void *key1, const void *key2, size_t key_len __rte_unused)
  {
@@ -303,7 +299,7 @@ diff --git a/lib/hash/rte_thash.h b/lib/hash/rte_thash.h
 index 4fa5e07..3c2a714 100644
 --- a/lib/hash/rte_thash.h
 +++ b/lib/hash/rte_thash.h
-@@ -169,18 +169,18 @@ rte_convert_rss_key(const uint32_t *orig, uint32_t *targ, int len)
+@@ -140,18 +140,18 @@ rte_convert_rss_key(const uint32_t *orig, uint32_t *targ, int len)
  static inline void
  rte_thash_load_v6_addrs(const struct ipv6_hdr *orig, union rte_thash_tuple *targ)
  {
@@ -314,7 +310,7 @@ index 4fa5e07..3c2a714 100644
 -	ipv6 = _mm_loadu_si128((const __m128i *)orig->dst_addr);
 -	*(__m128i *)targ->v6.dst_addr =
 -			_mm_shuffle_epi8(ipv6, rte_thash_ipv6_bswap_mask);
--#elif defined(RTE_MACHINE_CPUFLAG_NEON)
+-#elif defined(__ARM_NEON)
 -	uint8x16_t ipv6 = vld1q_u8((uint8_t const *)orig->src_addr);
 -	vst1q_u8((uint8_t *)targ->v6.src_addr, vrev32q_u8(ipv6));
 -	ipv6 = vld1q_u8((uint8_t const *)orig->dst_addr);
@@ -326,7 +322,7 @@ index 4fa5e07..3c2a714 100644
 +       ipv6 = _mm_loadu_si128((const __m128i *)orig->dst_addr);
 +       *(__m128i *)targ->v6.dst_addr =
 +                       _mm_shuffle_epi8(ipv6, rte_thash_ipv6_bswap_mask);
-+#elif defined(RTE_MACHINE_CPUFLAG_NEON) && !defined(KLEE_VERIFICATION)
++#elif defined(__ARM_NEON) && !defined(KLEE_VERIFICATION)
 +       uint8x16_t ipv6 = vld1q_u8((uint8_t const *)orig->src_addr);
 +       vst1q_u8((uint8_t *)targ->v6.src_addr, vrev32q_u8(ipv6));
 +       ipv6 = vld1q_u8((uint8_t const *)orig->dst_addr);
