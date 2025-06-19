@@ -221,7 +221,7 @@ source_install_dpdk()
 		DESTDIR=$(pwd) ninja -C build install
 
 		#Small hack for compilation of parse_fns required for NF only verif. 
-		cp install/include/rte_string_fns.h lib/librte_cmdline/
+		cp install/include/rte_string_fns.h lib/cmdline/
 
 		echo "$DPDK_RELEASE" > .version
 	fi
