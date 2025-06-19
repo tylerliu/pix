@@ -13,10 +13,10 @@ index 6fda870..879bb15 100644
  	return nb_pkts;
  }
  
-diff --git a/lib/eal/include/x86/rte_cycles.h b/lib/eal/include/x86/rte_cycles.h
+diff --git a/lib/eal/x86/include/rte_cycles.h b/lib/eal/x86/include/rte_cycles.h
 index 1bb3e1d..c948258 100644
---- a/lib/eal/include/x86/rte_cycles.h
-+++ b/lib/eal/include/x86/rte_cycles.h
+--- a/lib/eal/x86/include/rte_cycles.h
++++ b/lib/eal/x86/include/rte_cycles.h
 @@ -48,41 +48,49 @@ extern int rte_cycles_vmware_tsc_map;
  #endif
  #include <rte_common.h>
@@ -89,10 +89,10 @@ index 1bb3e1d..c948258 100644
  
  static inline uint64_t
  rte_get_tsc_cycles(void) { return rte_rdtsc(); }
-diff --git a/lib/eal/include/x86/rte_memcpy.h b/lib/eal/include/x86/rte_memcpy.h
+diff --git a/lib/eal/x86/include/rte_memcpy.h b/lib/eal/x86/include/rte_memcpy.h
 index 74c280c..b2f84d8 100644
---- a/lib/eal/include/x86/rte_memcpy.h
-+++ b/lib/eal/include/x86/rte_memcpy.h
+--- a/lib/eal/x86/include/rte_memcpy.h
++++ b/lib/eal/x86/include/rte_memcpy.h
 @@ -65,8 +65,13 @@ extern "C" {
   * @return
   *   Pointer to the destination data.
@@ -133,10 +133,10 @@ index 74c280c..b2f84d8 100644
  #endif /* _RTE_MEMCPY_X86_64_H_ */
 +
 + 
-diff --git a/lib/eal/include/x86/rte_prefetch.h b/lib/eal/include/x86/rte_prefetch.h
+diff --git a/lib/eal/x86/include/rte_prefetch.h b/lib/eal/x86/include/rte_prefetch.h
 index f464398..fffe630 100644
---- a/lib/eal/include/x86/rte_prefetch.h
-+++ b/lib/eal/include/x86/rte_prefetch.h
+--- a/lib/eal/x86/include/rte_prefetch.h
++++ b/lib/eal/x86/include/rte_prefetch.h
 @@ -41,25 +41,34 @@ extern "C" {
  #include <rte_common.h>
  #include "generic/rte_prefetch.h"
