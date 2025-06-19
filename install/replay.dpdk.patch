@@ -112,7 +112,7 @@ index 74c280c..b2f84d8 100644
  }
  
 +#ifndef KLEE_VERIFICATION
- static inline void *
+ static __rte_always_inline void *
  rte_memcpy(void *dst, const void *src, size_t n)
  {
  	if (!(((uintptr_t)dst | (uintptr_t)src) & ALIGNMENT_MASK))
@@ -187,7 +187,7 @@ index 07e409e..9d59c21 100644
  /**
   * @file
   *
-@@ -51,14 +57,14 @@
+@@ -24,14 +30,14 @@
   * @param p
   *   Address to prefetch
   */
@@ -204,7 +204,7 @@ index 07e409e..9d59c21 100644
  
  /**
   * Prefetch a cache line into all cache levels except the 0th and 1th cache
-@@ -66,7 +72,7 @@ static inline void rte_prefetch1(const volatile void *p);
+@@ -39,7 +45,7 @@ static inline void rte_prefetch1(const volatile void *p);
   * @param p
   *   Address to prefetch
   */
@@ -213,7 +213,7 @@ index 07e409e..9d59c21 100644
  
  /**
   * Prefetch a cache line into all cache levels (non-temporal/transient version)
-@@ -78,6 +84,6 @@ static inline void rte_prefetch2(const volatile void *p);
+@@ -51,6 +57,6 @@ static inline void rte_prefetch2(const volatile void *p);
   * @param p
   *   Address to prefetch
   */
@@ -225,7 +225,7 @@ diff --git a/lib/hash/rte_cmp_arm64.h b/lib/hash/rte_cmp_arm64.h
 index 950cef3..cb49e94 100644
 --- a/lib/hash/rte_cmp_arm64.h
 +++ b/lib/hash/rte_cmp_arm64.h
-@@ -36,21 +36,27 @@ static int
+@@ -7,21 +7,27 @@ static int
  rte_hash_k16_cmp_eq(const void *key1, const void *key2,
  		    size_t key_len __rte_unused)
  {
@@ -271,7 +271,7 @@ diff --git a/lib/hash/rte_cmp_x86.h b/lib/hash/rte_cmp_x86.h
 index 704c2de..4f332f5 100644
 --- a/lib/hash/rte_cmp_x86.h
 +++ b/lib/hash/rte_cmp_x86.h
-@@ -35,11 +35,16 @@
+@@ -8,11 +8,16 @@
  static int
  rte_hash_k16_cmp_eq(const void *key1, const void *key2, size_t key_len __rte_unused)
  {
@@ -296,7 +296,7 @@ diff --git a/lib/hash/rte_thash.h b/lib/hash/rte_thash.h
 index 4fa5e07..3c2a714 100644
 --- a/lib/hash/rte_thash.h
 +++ b/lib/hash/rte_thash.h
-@@ -169,18 +169,18 @@ rte_convert_rss_key(const uint32_t *orig, uint32_t *targ, int len)
+@@ -140,18 +140,18 @@ rte_convert_rss_key(const uint32_t *orig, uint32_t *targ, int len)
  static inline void
  rte_thash_load_v6_addrs(const struct ipv6_hdr *orig, union rte_thash_tuple *targ)
  {
