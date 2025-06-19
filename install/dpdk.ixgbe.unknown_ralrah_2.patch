@@ -21,7 +21,7 @@ index 04f9d82..b0602c7 100644
  
  	return IXGBE_SUCCESS;
  }
-@@ -2419,11 +2419,11 @@ s32 ixgbe_clear_rar_generic(struct ixgbe_hw *hw, u32 index)
+@@ -2412,11 +2412,11 @@ s32 ixgbe_clear_rar_generic(struct ixgbe_hw *hw, u32 index)
  	 * so save everything except the lower 16 bits that hold part
  	 * of the address and the address valid bit.
  	 */

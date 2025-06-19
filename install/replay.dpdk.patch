@@ -221,7 +221,7 @@ index 07e409e..9d59c21 100644
 +STATIC void rte_prefetch_non_temporal(const volatile void *p);
  
 +#undef STATIC
- 
++
  #endif /* _RTE_PREFETCH_H_ */
 diff --git a/lib/hash/rte_cmp_arm64.h b/lib/hash/rte_cmp_arm64.h
 index 950cef3..cb49e94 100644
