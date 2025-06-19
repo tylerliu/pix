@@ -66,34 +66,58 @@ remove_igb_uio_module()
 	  fi
 }
 
+build_igb_uio_module()
+{
+    # Set the directory where dpdk-kmods will be cloned
+    local kmods_dir="${HOME}/dpdk-kmods"
+    local igb_uio_dir="${kmods_dir}/linux/igb_uio"
+    local install_dir="${RTE_SDK}/install/kmod"
+
+    if [ ! -d "$kmods_dir" ]; then
+        echo "Cloning dpdk-kmods repository..."
+        git clone https://github.com/DPDK/dpdk-kmods.git "$kmods_dir"
+    fi
+
+    echo "Building igb_uio kernel module..."
+    cd "$igb_uio_dir"
+    make
+
+    echo "Installing igb_uio.ko to $install_dir"
+    mkdir -p "$install_dir"
+    cp igb_uio.ko "$install_dir/"
+
+    cd - > /dev/null
+}
+
 load_igb_uio_module()
 {
-	  if [ ! -f $RTE_SDK/$RTE_TARGET/kmod/igb_uio.ko ];then
-		    echo "## ERROR: Target does not have the DPDK UIO Kernel Module."
-		    echo "       To fix, please try to rebuild target."
-		    return
-	  fi
+    if [ ! -f $RTE_SDK/install/kmod/igb_uio.ko ];then
+		# Build the module according to https://doc.dpdk.org/dts/gsg/usr_guide/igb_uio.html
+        echo "## DPDK UIO Kernel Module not found. Attempting to build it."
+        build_igb_uio_module
+        if [ ! -f $RTE_SDK/install/kmod/igb_uio.ko ]; then
+            echo "## ERROR: Could not build the DPDK UIO Kernel Module."
+            return
+        fi
+    fi
 
-	  remove_igb_uio_module
+    remove_igb_uio_module
 
-	  /sbin/lsmod | grep -s uio > /dev/null
-	  if [ $? -ne 0 ] ; then
-		    modinfo uio > /dev/null
-		    if [ $? -eq 0 ]; then
-			      echo "Loading uio module"
-			      sudo /sbin/modprobe uio
-		    fi
-	  fi
+    /sbin/lsmod | grep -s uio > /dev/null
+    if [ $? -ne 0 ] ; then
+        modinfo uio > /dev/null
+        if [ $? -eq 0 ]; then
+            echo "Loading uio module"
+            sudo /sbin/modprobe uio
+        fi
+    fi
 
-	  # UIO may be compiled into kernel, so it may not be an error if it can't
-	  # be loaded.
-
-	  echo "Loading DPDK UIO module"
-	  sudo /sbin/insmod $RTE_SDK/$RTE_TARGET/kmod/igb_uio.ko
-	  if [ $? -ne 0 ] ; then
-		    echo "## ERROR: Could not load kmod/igb_uio.ko."
-		    exit 0
-	  fi
+    echo "Loading DPDK UIO module"
+    sudo /sbin/insmod $RTE_SDK/install/kmod/igb_uio.ko
+    if [ $? -ne 0 ] ; then
+        echo "## ERROR: Could not load kmod/igb_uio.ko."
+        exit 0
+    fi
 }
 
 bind_nics_to_igb_uio()

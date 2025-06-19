@@ -159,20 +159,20 @@ VERIF_FILES += $(NF_VERIF_FILES)
 # Environment stubs
 VERIF_FILES += ../lib/stubs/externals/*.c ../lib/stubs/core_stub.c ../lib/stubs/time_stub.c
 # DPDK cmdline parsing library, always included, we don't want/need to stub it
-VERIF_FILES += $(RTE_SDK)/lib/librte_cmdline/*.c
+VERIF_FILES += $(RTE_SDK)/lib/cmdline/*.c
 # ...and the string function it uses
-VERIF_FILES += $(RTE_SDK)/lib/librte_eal/common/eal_common_string_fns.c
+VERIF_FILES += $(RTE_SDK)/lib/eal/common/eal_common_string_fns.c
 
 # Defines for DPDK
 # CPUFLAGS is set to a sentinel value; usually it's passed from the DPDK build system
 VERIF_DPDK_DEFS := -DRTE_COMPILE_TIME_CPUFLAGS=424242
 
 # Includes for DPDK
-# We need librte_eal/common because eal_private.h is in there, required by eal_thread.c...
+# We need eal/common because eal_private.h is in there, required by eal_thread.c...
 # We need bus/pci because the linuxapp PCI stuff requires a private.h file in there...
 # bus/vdev and net/ixgbe are for stub drivers (which are vdevs) and hardware (the ixgbe driver) respectively
-VERIF_DPDK_INCLUDES := -I $(RTE_SDK)/$(RTE_TARGET)/include \
-			-I $(RTE_SDK)/lib/librte_eal/common \
+VERIF_DPDK_INCLUDES := -I $(RTE_SDK)/install/include \
+			-I $(RTE_SDK)/lib/eal/common \
 			-I $(RTE_SDK)/drivers/bus/vdev \
 			-I $(RTE_SDK)/drivers/bus/pci \
 			-I $(RTE_SDK)/drivers/net/ixgbe
@@ -185,7 +185,7 @@ VERIF_DPDK_INCLUDES += --include=lib/stubs/builtin_stub.h --include=rte_config.h
 # Low-level stubs for specific functions
 VERIF_DPDK_FILES := ../lib/stubs/dpdk_low_level_stub.c
 # Platform-independent and Linux-specific EAL
-VERIF_DPDK_FILES += $(RTE_SDK)/lib/librte_eal/common/*.c $(RTE_SDK)/lib/librte_eal/linuxapp/eal/*.c
+VERIF_DPDK_FILES += $(RTE_SDK)/lib/eal/common/*.c $(RTE_SDK)/lib/eal/linuxapp/eal/*.c
 # Default ring mempool driver
 VERIF_DPDK_FILES += $(RTE_SDK)/drivers/mempool/ring/rte_mempool_ring.c
 # Other libraries, except acl and distributor which use CPU intrinsics (there is a generic version of distributor, but we don't need it),
