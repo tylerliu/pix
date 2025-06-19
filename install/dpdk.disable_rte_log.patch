@@ -2,7 +2,7 @@ diff --git a/lib/eal/common/eal_common_log.c b/lib/eal/common/eal_common_log.c
 index 3fb2188..952aa25 100644
 --- a/lib/eal/common/eal_common_log.c
 +++ b/lib/eal/common/eal_common_log.c
-@@ -344,8 +344,11 @@ rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
+@@ -499,8 +499,11 @@ rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
  	RTE_PER_LCORE(log_cur_msg).loglevel = level;
  	RTE_PER_LCORE(log_cur_msg).logtype = logtype;
  
