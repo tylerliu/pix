@@ -193,7 +193,6 @@ source_install_dpdk()
 		python3-pyelftools
 
 	# Ensure environment is correct.
-	line "$PATHSFILE" 'RTE_TARGET' 'x86_64-native-linuxapp-gcc'
 	line "$PATHSFILE" 'RTE_SDK' "$BUILDDIR/dpdk"
 
 	# shellcheck source=../paths.sh
@@ -217,13 +216,12 @@ source_install_dpdk()
 		patch -p1 < "$VNDSDIR/install/replay.dpdk.patch"
 
 		# Configure and build with meson
-		meson setup build
-		cd build
-		ninja
-		ninja install DESTDIR=.
+		meson setup build --prefix=/install
+		ninja -C build
+		DESTDIR=$(pwd) ninja -C build install
 
 		#Small hack for compilation of parse_fns required for NF only verif. 
-		cp x86_64-native-linuxapp-gcc/include/rte_string_fns.h lib/librte_cmdline/
+		cp install/include/rte_string_fns.h lib/librte_cmdline/
 
 		echo "$DPDK_RELEASE" > .version
 	fi

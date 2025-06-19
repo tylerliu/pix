@@ -171,7 +171,7 @@ VERIF_DPDK_DEFS := -DRTE_COMPILE_TIME_CPUFLAGS=424242
 # We need librte_eal/common because eal_private.h is in there, required by eal_thread.c...
 # We need bus/pci because the linuxapp PCI stuff requires a private.h file in there...
 # bus/vdev and net/ixgbe are for stub drivers (which are vdevs) and hardware (the ixgbe driver) respectively
-VERIF_DPDK_INCLUDES := -I $(RTE_SDK)/$(RTE_TARGET)/include \
+VERIF_DPDK_INCLUDES := -I $(RTE_SDK)/install/include \
 			-I $(RTE_SDK)/lib/librte_eal/common \
 			-I $(RTE_SDK)/drivers/bus/vdev \
 			-I $(RTE_SDK)/drivers/bus/pci \
