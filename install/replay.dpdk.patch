@@ -17,7 +17,7 @@ diff --git a/lib/eal/x86/include/rte_cycles.h b/lib/eal/x86/include/rte_cycles.h
 index 1bb3e1d..c948258 100644
 --- a/lib/eal/x86/include/rte_cycles.h
 +++ b/lib/eal/x86/include/rte_cycles.h
-@@ -48,41 +48,49 @@ extern int rte_cycles_vmware_tsc_map;
+@@ -20,41 +20,49 @@ extern int rte_cycles_vmware_tsc_map;
  #endif
  #include <rte_common.h>
  
@@ -93,7 +93,7 @@ diff --git a/lib/eal/x86/include/rte_memcpy.h b/lib/eal/x86/include/rte_memcpy.h
 index 74c280c..b2f84d8 100644
 --- a/lib/eal/x86/include/rte_memcpy.h
 +++ b/lib/eal/x86/include/rte_memcpy.h
-@@ -65,8 +65,13 @@ extern "C" {
+@@ -42,8 +42,13 @@ extern "C" {
   * @return
   *   Pointer to the destination data.
   */
@@ -107,7 +107,7 @@ index 74c280c..b2f84d8 100644
  
  #ifdef RTE_MACHINE_CPUFLAG_AVX512F
  
-@@ -888,17 +893,21 @@ rte_memcpy_aligned(void *dst, const void *src, size_t n)
+@@ -888,14 +893,16 @@ rte_memcpy_aligned(void *dst, const void *src, size_t n)
  	return ret;
  }
  
@@ -115,24 +115,15 @@ index 74c280c..b2f84d8 100644
  static inline void *
  rte_memcpy(void *dst, const void *src, size_t n)
  {
--	if (!(((uintptr_t)dst | (uintptr_t)src) & ALIGNMENT_MASK))
--		return rte_memcpy_aligned(dst, src, n);
--	else
--		return rte_memcpy_generic(dst, src, n);
-+       if (!(((uintptr_t)dst | (uintptr_t)src) & ALIGNMENT_MASK))
-+               return rte_memcpy_aligned(dst, src, n);
-+       else
-+               return rte_memcpy_generic(dst, src, n);
+ 	if (!(((uintptr_t)dst | (uintptr_t)src) & ALIGNMENT_MASK))
+ 		return rte_memcpy_aligned(dst, src, n);
+ 	else
+ 		return rte_memcpy_generic(dst, src, n);
  }
 +#endif//!KLEE_VERIFICATION
  
- #ifdef __cplusplus
- }
- #endif
- 
- #endif /* _RTE_MEMCPY_X86_64_H_ */
-+
-+ 
+ #undef ALIGNMENT_MASK
+
 diff --git a/lib/eal/x86/include/rte_prefetch.h b/lib/eal/x86/include/rte_prefetch.h
 index f464398..fffe630 100644
 --- a/lib/eal/x86/include/rte_prefetch.h
@@ -181,9 +172,11 @@ diff --git a/lib/eal/include/generic/rte_prefetch.h b/lib/eal/include/generic/rt
 index 07e409e..9d59c21 100644
 --- a/lib/eal/include/generic/rte_prefetch.h
 +++ b/lib/eal/include/generic/rte_prefetch.h
-@@ -34,6 +34,12 @@
+@@ -5,8 +5,14 @@
  #ifndef _RTE_PREFETCH_H_
  #define _RTE_PREFETCH_H_
+
+ #include <rte_compat.h>
  
 +#ifdef KLEE_VERIFICATION
 +#define STATIC
@@ -314,7 +307,7 @@ index 4fa5e07..3c2a714 100644
 -	ipv6 = _mm_loadu_si128((const __m128i *)orig->dst_addr);
 -	*(__m128i *)targ->v6.dst_addr =
 -			_mm_shuffle_epi8(ipv6, rte_thash_ipv6_bswap_mask);
--#elif defined(RTE_MACHINE_CPUFLAG_NEON)
+-#elif defined(__ARM_NEON)
 -	uint8x16_t ipv6 = vld1q_u8((uint8_t const *)orig->src_addr);
 -	vst1q_u8((uint8_t *)targ->v6.src_addr, vrev32q_u8(ipv6));
 -	ipv6 = vld1q_u8((uint8_t const *)orig->dst_addr);
@@ -326,7 +319,7 @@ index 4fa5e07..3c2a714 100644
 +       ipv6 = _mm_loadu_si128((const __m128i *)orig->dst_addr);
 +       *(__m128i *)targ->v6.dst_addr =
 +                       _mm_shuffle_epi8(ipv6, rte_thash_ipv6_bswap_mask);
-+#elif defined(RTE_MACHINE_CPUFLAG_NEON) && !defined(KLEE_VERIFICATION)
++#elif defined(__ARM_NEON) && !defined(KLEE_VERIFICATION)
 +       uint8x16_t ipv6 = vld1q_u8((uint8_t const *)orig->src_addr);
 +       vst1q_u8((uint8_t *)targ->v6.src_addr, vrev32q_u8(ipv6));
 +       ipv6 = vld1q_u8((uint8_t const *)orig->dst_addr);
