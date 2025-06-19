@@ -107,7 +107,7 @@ index 74c280c..b2f84d8 100644
  
  #ifdef RTE_MACHINE_CPUFLAG_AVX512F
  
-@@ -888,14 +893,16 @@ rte_memcpy_aligned(void *dst, const void *src, size_t n)
+@@ -859,14 +864,16 @@ rte_memcpy_aligned(void *dst, const void *src, size_t n)
  	return ret;
  }
  
@@ -128,7 +128,7 @@ diff --git a/lib/eal/x86/include/rte_prefetch.h b/lib/eal/x86/include/rte_prefet
 index f464398..fffe630 100644
 --- a/lib/eal/x86/include/rte_prefetch.h
 +++ b/lib/eal/x86/include/rte_prefetch.h
-@@ -41,25 +41,34 @@ extern "C" {
+@@ -13,25 +13,34 @@ extern "C" {
  #include <rte_common.h>
  #include "generic/rte_prefetch.h"
  
@@ -213,12 +213,14 @@ index 07e409e..9d59c21 100644
  
  /**
   * Prefetch a cache line into all cache levels (non-temporal/transient version)
-@@ -51,6 +57,6 @@ static inline void rte_prefetch2(const volatile void *p);
+@@ -51,6 +57,8 @@ static inline void rte_prefetch2(const volatile void *p);
   * @param p
   *   Address to prefetch
   */
 -static inline void rte_prefetch_non_temporal(const volatile void *p);
 +STATIC void rte_prefetch_non_temporal(const volatile void *p);
+ 
++#undef STATIC
  
  #endif /* _RTE_PREFETCH_H_ */
 diff --git a/lib/hash/rte_cmp_arm64.h b/lib/hash/rte_cmp_arm64.h
