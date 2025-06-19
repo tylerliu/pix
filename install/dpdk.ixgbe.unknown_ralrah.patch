@@ -37,7 +37,7 @@ index d9d11a8..7166d04 100644
 +	u32 rar_low;
 +	u16 i;
 +
-+	DEBUGFUNC("ixgbe_get_mac_addr_generic");
++	DEBUGFUNC("ixgbe_get_mac_addr_82599");
 +
 +	rar_high = IXGBE_READ_REG(hw, IXGBE_RAH_82599(0));
 +	rar_low = IXGBE_READ_REG(hw, IXGBE_RAL_82599(0));
@@ -52,8 +52,8 @@ index d9d11a8..7166d04 100644
 +}
 +
 +/**
-  *  ixgbe_identify_phy_82599 - Get physical layer module
-  *  @hw: pointer to hardware structure
+  * ixgbe_identify_phy_82599 - Get physical layer module
+  * @hw: pointer to hardware structure
   *
 diff --git a/drivers/net/ixgbe/base/ixgbe_type.h b/drivers/net/ixgbe/base/ixgbe_type.h
 index af90462..98af4ea 100644

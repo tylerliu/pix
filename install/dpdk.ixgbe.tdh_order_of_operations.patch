@@ -2,7 +2,7 @@ diff --git a/drivers/net/ixgbe/ixgbe_rxtx.c b/drivers/net/ixgbe/ixgbe_rxtx.c
 index ef9ecd3..c883112 100644
 --- a/drivers/net/ixgbe/ixgbe_rxtx.c
 +++ b/drivers/net/ixgbe/ixgbe_rxtx.c
-@@ -5500,6 +5500,9 @@ ixgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+@@ -5527,6 +5527,9 @@ ixgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
  
  	txq = dev->data->tx_queues[tx_queue_id];
  	IXGBE_WRITE_REG(hw, IXGBE_TDH(txq->reg_idx), 0);
@@ -12,7 +12,7 @@ index ef9ecd3..c883112 100644
  	txdctl = IXGBE_READ_REG(hw, IXGBE_TXDCTL(txq->reg_idx));
  	txdctl |= IXGBE_TXDCTL_ENABLE;
  	IXGBE_WRITE_REG(hw, IXGBE_TXDCTL(txq->reg_idx), txdctl);
-@@ -5516,8 +5519,6 @@ ixgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+@@ -5543,8 +5546,6 @@ ixgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
  			PMD_INIT_LOG(ERR, "Could not enable Tx Queue %d",
  				tx_queue_id);
  	}

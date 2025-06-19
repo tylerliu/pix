@@ -2,7 +2,7 @@ diff --git a/drivers/net/ixgbe/ixgbe_rxtx.c b/drivers/net/ixgbe/ixgbe_rxtx.c
 index b8dd9fd..ef9ecd3 100644
 --- a/drivers/net/ixgbe/ixgbe_rxtx.c
 +++ b/drivers/net/ixgbe/ixgbe_rxtx.c
-@@ -5184,7 +5184,11 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
+@@ -5207,7 +5207,11 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
  			rdrxctl &= ~IXGBE_RDRXCTL_CRCSTRIP;
  		else
  			rdrxctl |= IXGBE_RDRXCTL_CRCSTRIP;
