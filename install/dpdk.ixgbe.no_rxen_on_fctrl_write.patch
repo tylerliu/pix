@@ -2,7 +2,7 @@ diff --git a/drivers/net/ixgbe/ixgbe_ethdev.c b/drivers/net/ixgbe/ixgbe_ethdev.c
 index a2bc708..c841526 100644
 --- a/drivers/net/ixgbe/ixgbe_ethdev.c
 +++ b/drivers/net/ixgbe/ixgbe_ethdev.c
-@@ -4442,12 +4442,22 @@ ixgbe_dev_promiscuous_enable(struct rte_eth_dev *dev)
+@@ -4445,12 +4445,22 @@ ixgbe_dev_promiscuous_enable(struct rte_eth_dev *dev)
  {
  	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
  	uint32_t fctrl;
@@ -25,7 +25,7 @@ index a2bc708..c841526 100644
  }
  
  static void
-@@ -4455,6 +4465,12 @@ ixgbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
+@@ -4458,6 +4468,12 @@ ixgbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
  {
  	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
  	uint32_t fctrl;
@@ -38,7 +38,7 @@ index a2bc708..c841526 100644
  
  	fctrl = IXGBE_READ_REG(hw, IXGBE_FCTRL);
  	fctrl &= (~IXGBE_FCTRL_UPE);
-@@ -4463,8 +4479,12 @@ ixgbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
+@@ -4466,8 +4482,12 @@ ixgbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
  	else
  		fctrl &= (~IXGBE_FCTRL_MPE);
  	IXGBE_WRITE_REG(hw, IXGBE_FCTRL, fctrl);
@@ -51,7 +51,7 @@ index a2bc708..c841526 100644
  }
  
  static void
-@@ -4472,11 +4492,21 @@ ixgbe_dev_allmulticast_enable(struct rte_eth_dev *dev)
+@@ -4475,11 +4495,21 @@ ixgbe_dev_allmulticast_enable(struct rte_eth_dev *dev)
  {
  	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
  	uint32_t fctrl;
@@ -73,14 +73,14 @@ index a2bc708..c841526 100644
 	return 0;
  }
  
-@@ -4485,15 +4515,25 @@ ixgbe_dev_allmulticast_disable(struct rte_eth_dev *dev)
+@@ -4488,15 +4518,25 @@ ixgbe_dev_allmulticast_disable(struct rte_eth_dev *dev)
  {
  	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
  	uint32_t fctrl;
 +	uint32_t rxctrl;
  
  	if (dev->data->promiscuous == 1)
- 		return; /* must remain in all_multicast mode */
+ 		return 0; /* must remain in all_multicast mode */
  
 +	/* Before modifying FCTRL, RXCTRL.RXEN must be 0 */
 +	rxctrl = IXGBE_READ_REG(hw, IXGBE_RXCTRL);
