@@ -179,10 +179,10 @@ index 07e409e..9d59c21 100644
  #include <rte_compat.h>
  
 +#ifdef KLEE_VERIFICATION
-+#define STATIC
-+#else//KLEE_VERIFICATION
-+#define STATIC static inline
-+#endif//KLEE_VERIFICATION
++#define STATIC2
++#else // KLEE_VERIFICATION
++#define STATIC2 static inline
++#endif // KLEE_VERIFICATION
 +
  /**
   * @file
@@ -192,7 +192,7 @@ index 07e409e..9d59c21 100644
   *   Address to prefetch
   */
 -static inline void rte_prefetch0(const volatile void *p);
-+STATIC void rte_prefetch0(const volatile void *p);
++STATIC2 void rte_prefetch0(const volatile void *p);
  
  /**
   * Prefetch a cache line into all cache levels except the 0th cache level.
@@ -200,7 +200,7 @@ index 07e409e..9d59c21 100644
   *   Address to prefetch
   */
 -static inline void rte_prefetch1(const volatile void *p);
-+STATIC void rte_prefetch1(const volatile void *p);
++STATIC2 void rte_prefetch1(const volatile void *p);
  
  /**
   * Prefetch a cache line into all cache levels except the 0th and 1th cache
@@ -209,7 +209,7 @@ index 07e409e..9d59c21 100644
   *   Address to prefetch
   */
 -static inline void rte_prefetch2(const volatile void *p);
-+STATIC void rte_prefetch2(const volatile void *p);
++STATIC2 void rte_prefetch2(const volatile void *p);
  
  /**
   * Prefetch a cache line into all cache levels (non-temporal/transient version)
@@ -218,9 +218,9 @@ index 07e409e..9d59c21 100644
   *   Address to prefetch
   */
 -static inline void rte_prefetch_non_temporal(const volatile void *p);
-+STATIC void rte_prefetch_non_temporal(const volatile void *p);
++STATIC2 void rte_prefetch_non_temporal(const volatile void *p);
  
-+#undef STATIC
++#undef STATIC2
 +
  /**
   * @warning
