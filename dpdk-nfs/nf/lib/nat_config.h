@@ -18,10 +18,10 @@ struct nat_config {
   uint32_t external_addr;
 
   // MAC addresses of devices
-  struct ether_addr device_macs[RTE_MAX_ETHPORTS];
+  struct rte_ether_addr device_macs[RTE_MAX_ETHPORTS];
 
   // MAC addresses of the endpoints the devices are linked to
-  struct ether_addr endpoint_macs[RTE_MAX_ETHPORTS];
+  struct rte_ether_addr endpoint_macs[RTE_MAX_ETHPORTS];
 
   // Driver identifier for each device, based on (https://docs.huihoo.com/doxygen/linux/kernel/3.7/include_2uapi_2linux_2ethtool_8h_source.html#l00082)
   int driver_type; // Ideally, this should also be an array (one for each device, but for now, we assume all NICs are of the same type because klee has a problem with symbolic indices)

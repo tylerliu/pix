@@ -390,7 +390,7 @@ struct LoadBalancedBackend lb_get_backend(struct LoadBalancer *balancer,
 
 void lb_process_heartbit(struct LoadBalancer *balancer,
                          struct LoadBalancedFlow *flow,
-                         struct ether_addr mac_addr, int nic, time_t now) {
+                         struct rte_ether_addr mac_addr, int nic, time_t now) {
   int backend_index;
   if (map_get(balancer->ip_to_backend_id, &flow->src_ip, &backend_index) == 0) {
     if (0 != dchain_allocate_new_index(balancer->active_backends,

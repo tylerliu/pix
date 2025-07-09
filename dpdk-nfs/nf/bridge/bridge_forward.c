@@ -58,7 +58,7 @@ int bridge_expire_entries(time_t time) {
                                  dynamic_ft.map, min_time);
 }
 
-int bridge_get_device(struct ether_addr *dst, uint16_t src_device) {
+int bridge_get_device(struct rte_ether_addr *dst, uint16_t src_device) {
   int device = -1;
   int index = -1;
   int present = map_get(dynamic_ft.map, dst, &index);
@@ -78,7 +78,7 @@ int bridge_get_device(struct ether_addr *dst, uint16_t src_device) {
   return -1;
 }
 
-void bridge_put_update_entry(struct ether_addr *src, uint16_t src_device,
+void bridge_put_update_entry(struct rte_ether_addr *src, uint16_t src_device,
                              time_t time) {
   int index = -1;
   int present = map_get(dynamic_ft.map, src, &index);
@@ -93,11 +93,11 @@ void bridge_put_update_entry(struct ether_addr *src, uint16_t src_device,
       // VIGOR_TAG(TRAFFIC_CLASS, UNKNOWN_SRC_FULL);
       return;
     }
-    struct ether_addr *key = 0;
+    struct rte_ether_addr *key = 0;
     struct DynamicValue *value = 0;
     vector_borrow(dynamic_ft.keys, index, (void **)&key);
     vector_borrow(dynamic_ft.values, index, (void **)&value);
-    memcpy(key, src, sizeof(struct ether_addr));
+    memcpy(key, src, sizeof(struct rte_ether_addr));
     value->device = src_device;
     map_put(dynamic_ft.map, key, index);
     // VIGOR_TAG(TRAFFIC_CLASS, UNKNOWN_SRC);
@@ -237,7 +237,7 @@ void read_static_ft_from_file() {
 
     // Ouff... the strings are extracted, now let's parse them.
     result = cmdline_parse_etheraddr(NULL, mac_addr_str, &key->addr,
-                                     sizeof(struct ether_addr));
+                                     sizeof(struct rte_ether_addr));
     if (result < 0) {
       NF_INFO("Invalid MAC address: %s, skip", mac_addr_str);
       continue;
@@ -280,7 +280,7 @@ void nf_core_init(void) {
       map_allocate(ether_addr_eq, ether_addr_hash, capacity, &dynamic_ft.map);
   if (!happy)
     rte_exit(EXIT_FAILURE, "error allocating dynamic map");
-  happy = vector_allocate(sizeof(struct ether_addr), capacity, init_nothing_ea,
+  happy = vector_allocate(sizeof(struct rte_ether_addr), capacity, init_nothing_ea,
                           &dynamic_ft.keys);
   if (!happy)
     rte_exit(EXIT_FAILURE, "error allocating dynamic key array");
@@ -293,7 +293,7 @@ void nf_core_init(void) {
     rte_exit(EXIT_FAILURE, "error allocating heap");
 
 #ifdef KLEE_VERIFICATION
-  map_set_key_size(dynamic_ft.map, sizeof(struct ether_addr));
+  map_set_key_size(dynamic_ft.map, sizeof(struct rte_ether_addr));
 #endif // KLEE_VERIFICATION
   DS_INIT(map, dynamic_ft.map, "MACtable", "mac_addr")
   DS_INIT(dchain, dynamic_ft.heap, "learnt_ports", "ports")
@@ -303,7 +303,7 @@ int nf_core_process(struct rte_mbuf *mbuf, time_t now) {
 
   // VIGOR_TAG(TRAFFIC_CLASS, PACKET_RECEIVED);
 
-  struct ether_hdr *ether_header = nf_get_mbuf_ether_header(mbuf);
+  struct rte_ether_hdr *ether_header = nf_get_mbuf_ether_header(mbuf);
 
   bridge_expire_entries(now);
   bridge_put_update_entry(&ether_header->s_addr, mbuf->port, now);

@@ -175,7 +175,7 @@ rte_eth_dev_socket_id(uint16_t port_id)
 }
 
 static inline void
-rte_eth_macaddr_get(uint16_t port_id, struct ether_addr *mac_addr)
+rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr)
 {
 	// TODO?
 }

@@ -21,8 +21,36 @@ PCAP_FILE2 := pcap/empty.pcap
 MEASURE_ADD_FLAGS := -DSTOP_ON_RX_0
 KLEE_ROOT=$(KLEE_INCLUDE)/..
 
-# DPDK stuff
-include $(RTE_SDK)/mk/rte.vars.mk
+# DPDK meson support - detect early
+# Check if we're using meson-built DPDK (no rte.vars.mk) or legacy DPDK
+DPDK_MESON_BUILD := $(shell test ! -f $(RTE_SDK)/mk/rte.vars.mk && echo yes)
+
+ifeq ($(DPDK_MESON_BUILD),yes)
+    # Meson-built DPDK
+    DPDK_INC ?= $(RTE_SDK)/install/include
+    DPDK_LIB ?= $(RTE_SDK)/install/lib
+    
+    # Use pkg-config for DPDK flags if available
+    ifeq ($(shell pkg-config --exists libdpdk && echo yes),yes)
+        DPDK_CFLAGS := $(shell pkg-config --cflags libdpdk)
+        DPDK_LIBS := $(shell pkg-config --libs libdpdk)
+    else
+        # Fallback to manual flags for meson DPDK
+        DPDK_CFLAGS := -I$(DPDK_INC)
+        DPDK_LIBS := -L$(DPDK_LIB) -Wl,-rpath,$(DPDK_LIB) -ldpdk
+    endif
+    
+    # Add DPDK flags to CFLAGS and LDFLAGS
+    CFLAGS += $(DPDK_CFLAGS)
+    LDFLAGS += $(DPDK_LIBS)
+    
+    # Define that we're using meson DPDK
+    CFLAGS += -DDPDK_MESON_BUILD
+else
+    # Legacy DPDK - include the old makefiles
+    include $(RTE_SDK)/mk/rte.vars.mk
+    include $(RTE_SDK)/mk/rte.extapp.mk
+endif
 
 # allow the use of extglob in paths
 SHELL = /bin/bash -O extglob -c
@@ -98,9 +126,6 @@ ifeq ($(FREUD),YES)
 CFLAGS += -g -gstrict-dwarf -DFREUD
 endif
 
-# DPDK stuff
-include $(RTE_SDK)/mk/rte.extapp.mk
-
 ### VeriFast verification ###
 # we use DPDK stubs in there (e.g. rte_config.h)
 verifast:
@@ -131,8 +156,15 @@ VERIF_FLAGS += $(NF_VERIF_FLAGS)
 EXEC_FLAGS := -c -g -O2 -std=c99 -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
 # Basic includes: NF root and KLEE
 VERIF_INCLUDES := -I $(SELF_DIR) -I $(KLEE_INCLUDE)
-# ...and the DPDK cmdline library
-VERIF_INCLUDES += -I $(RTE_SDK)/lib/librte_cmdline
+
+# For meson DPDK, we need to handle cmdline library differently
+ifdef DPDK_MESON_BUILD
+    # With meson DPDK, cmdline is part of the main library
+    VERIF_INCLUDES += -I $(DPDK_INC)
+else
+    # Legacy DPDK - include cmdline library path
+    VERIF_INCLUDES += -I $(RTE_SDK)/lib/librte_cmdline
+endif
 
 # Defines. TODO remove _GNU_SOURCE from here, #define it in files
 VERIF_DEFS := -D_GNU_SOURCE -DKLEE_VERIFICATION
@@ -159,7 +191,19 @@ VERIF_FILES += $(NF_VERIF_FILES)
 # Environment stubs
 VERIF_FILES += ../lib/stubs/externals/*.c ../lib/stubs/core_stub.c ../lib/stubs/time_stub.c
 # DPDK cmdline parsing library, always included, we don't want/need to stub it
-VERIF_FILES += $(RTE_SDK)/lib/cmdline/*.c
+# Exclude Windows-specific files
+VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline.c
+VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_cirbuf.c
+VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse.c
+VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_etheraddr.c
+VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_ipaddr.c
+VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_num.c
+VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_portlist.c
+VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_string.c
+VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_rdline.c
+VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_socket.c
+VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_vt100.c
+VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_os_unix.c
 # ...and the string function it uses
 VERIF_FILES += $(RTE_SDK)/lib/eal/common/eal_common_string_fns.c
 
@@ -176,7 +220,6 @@ VERIF_DPDK_INCLUDES := -I $(RTE_SDK)/install/include \
 			-I $(RTE_SDK)/drivers/bus/vdev \
 			-I $(RTE_SDK)/drivers/bus/pci \
 			-I $(RTE_SDK)/drivers/net/ixgbe
-# And then some special DPDK includes: builtin_stubs for built-ins DPDK uses, and rte_config which many DPDK files use without including
 VERIF_DPDK_INCLUDES += --include=lib/stubs/builtin_stub.h --include=rte_config.h
 #As of now, executable does not compile with builtin_stub and gcc, so use the one below
 #VERIF_DPDK_INCLUDES +=  --include=rte_config.h
@@ -227,6 +270,9 @@ NF_VERIF_BASE_ARGS := nf.bc --no-shconf --
 verify-dpdk:
 	$(CLEAN_COMMAND)
 	# Use DPDK stub headers
+	@echo "DEBUG: DPDK_MESON_BUILD = $(DPDK_MESON_BUILD)"
+	@echo "DEBUG: VERIF_FILES = $(VERIF_FILES)"
+	@echo "DEBUG: VERIF_INCLUDES = $(VERIF_INCLUDES)"
 	$(COMPILE_COMMAND) $(VERIF_DEFS) -DVIGOR_STUB_DPDK $(VERIF_INCLUDES) -I $(SELF_DIR)/lib/stubs/dpdk $(VERIF_FILES) $(VERIF_FLAGS)
 	$(LINK_COMMAND)
 	$(VERIF_COMMAND) $(NF_VERIF_BASE_ARGS) $(NF_VERIF_ARGS)

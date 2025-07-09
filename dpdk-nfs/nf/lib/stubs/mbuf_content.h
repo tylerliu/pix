@@ -9,9 +9,9 @@
 // TODO more complete stub content?
 // do change the total_len in rx if this is changed!
 struct stub_mbuf_content {
-	struct ether_hdr ether;
-	struct ipv4_hdr ipv4;
-	struct tcp_hdr tcp;
+	struct rte_ether_hdr ether;
+	struct rte_ipv4_hdr ipv4;
+	struct rte_tcp_hdr tcp;
 }
 // We need to pack the structure so offsets are correct, but only if we're not within VeriFast, cause VeriFast doesn't know about it
 #ifdef KLEE_VERIFICATION
@@ -22,7 +22,7 @@ struct stub_mbuf_content {
 // VeriFast definitions used in the tracing contracts
 /*@
     inductive ether_addri = eaddrc(int, int, int, int, int, int);
-    predicate ether_addrp(struct ether_addr* ptr; ether_addri addr) =
+    predicate ether_addrp(struct rte_ether_addr* ptr; ether_addri addr) =
       struct_ether_addr_padding(ptr) &*&
       ptr->a |-> ?a &*&
       ptr->b |-> ?b &*&
@@ -33,14 +33,14 @@ struct stub_mbuf_content {
       addr == eaddrc(a, b, c, d, e, f);
 
     inductive ether_hdri = ether_hdrc(ether_addri, ether_addri, int);
-    predicate ether_hdrp(struct ether_hdr *ether; ether_hdri hdr) =
+    predicate ether_hdrp(struct rte_ether_hdr *ether; ether_hdri hdr) =
       ether_addrp(&ether->d_addr, ?daddr) &*&
       ether_addrp(&ether->s_addr, ?saddr) &*&
       ether->ether_type |-> ?et &*&
       hdr == ether_hdrc(saddr, daddr, et);
 
     inductive ipv4_hdri = ipv4_hdrc(int, int, int, int, int, int, int, int, int);
-    predicate ipv4_hdrp(struct ipv4_hdr* hdr; ipv4_hdri val) =
+    predicate ipv4_hdrp(struct rte_ipv4_hdr* hdr; ipv4_hdri val) =
       hdr->version_ihl |-> ?vihl &*&
       hdr->type_of_service |-> ?tos &*&
       hdr->total_length |-> ?len &*&
@@ -56,7 +56,7 @@ struct stub_mbuf_content {
       //FIXME: ^^ generalize for all values
 
     inductive tcp_hdri = tcp_hdrc(int, int, int, int, int, int, int, int);
-    predicate tcp_hdrp(struct tcp_hdr* hdr; tcp_hdri val) =
+    predicate tcp_hdrp(struct rte_tcp_hdr* hdr; tcp_hdri val) =
       hdr->src_port |-> ?srcp &*&
       hdr->dst_port |-> ?dstp &*&
       hdr->sent_seq |-> ?seq &*&

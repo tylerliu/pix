@@ -13,7 +13,7 @@
 
 
 // Constant stuff
-static struct ether_addr stub_addr = { .addr_bytes = {0} };
+static struct rte_ether_addr stub_addr = { .addr_bytes = {0} };
 static struct rte_eth_link stub_link = {
 	.link_speed = ETH_SPEED_NUM_10G,
 	.link_duplex = ETH_LINK_FULL_DUPLEX,

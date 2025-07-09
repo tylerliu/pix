@@ -85,7 +85,7 @@ void lb_config_init(struct lb_config* config,
 	optind = 1;
 
   // Fill in the mac addresses
-  config->device_macs = malloc(sizeof(struct ether_addr) * rte_eth_dev_count_avail());
+  config->device_macs = malloc(sizeof(struct rte_ether_addr) * rte_eth_dev_count_avail());
   for (int i = 0; i < rte_eth_dev_count_avail(); ++i) {
     rte_eth_macaddr_get(i, &config->device_macs[i]);
   }

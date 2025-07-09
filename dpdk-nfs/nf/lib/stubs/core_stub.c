@@ -28,8 +28,6 @@ static struct str_field_descr mbuf_descrs[] = {
     {offsetof(struct rte_mbuf, vlan_tci_outer), sizeof(uint16_t),
      "vlan_tci_outer"},
     {offsetof(struct rte_mbuf, buf_len), sizeof(uint16_t), "buf_len"},
-    {offsetof(struct rte_mbuf, timestamp), sizeof(uint64_t), "timestamp"},
-    {offsetof(struct rte_mbuf, udata64), sizeof(uint64_t), "udata64"},
     /*{offsetof(struct rte_mbuf, pool), sizeof(rte_mempool*), "pool"}, TODO no
        real reason this is commented out? */
     /*{offsetof(struct rte_mbuf, next), sizeof(struct rte_mbuf*), "next"}, - we
@@ -37,89 +35,88 @@ static struct str_field_descr mbuf_descrs[] = {
     {offsetof(struct rte_mbuf, tx_offload), sizeof(uint64_t), "tx_offload"},
     {offsetof(struct rte_mbuf, priv_size), sizeof(uint16_t), "priv_size"},
     {offsetof(struct rte_mbuf, timesync), sizeof(uint16_t), "timesync"},
-    {offsetof(struct rte_mbuf, seqn), sizeof(uint32_t), "seqn"},
 };
 static struct nested_field_descr stub_mbuf_content_nested[] = {
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, ether_type), sizeof(uint16_t), "ether_type"},
+     offsetof(struct rte_ether_hdr, ether_type), sizeof(uint16_t), "ether_type"},
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, d_addr), sizeof(struct ether_addr), "d_addr"},
+     offsetof(struct rte_ether_hdr, dst_addr), sizeof(struct rte_ether_addr), "dst_addr"},
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, s_addr), sizeof(struct ether_addr), "s_addr"},
+     offsetof(struct rte_ether_hdr, src_addr), sizeof(struct rte_ether_addr), "src_addr"},
     {offsetof(struct stub_mbuf_content, ipv4),
-     offsetof(struct ipv4_hdr, version_ihl), sizeof(uint8_t), "version_ihl"},
+     offsetof(struct rte_ipv4_hdr, version_ihl), sizeof(uint8_t), "version_ihl"},
     {offsetof(struct stub_mbuf_content, ipv4),
-     offsetof(struct ipv4_hdr, type_of_service), sizeof(uint8_t),
+     offsetof(struct rte_ipv4_hdr, type_of_service), sizeof(uint8_t),
      "type_of_service"},
     {offsetof(struct stub_mbuf_content, ipv4),
-     offsetof(struct ipv4_hdr, total_length), sizeof(uint16_t), "total_length"},
+     offsetof(struct rte_ipv4_hdr, total_length), sizeof(uint16_t), "total_length"},
     {offsetof(struct stub_mbuf_content, ipv4),
-     offsetof(struct ipv4_hdr, packet_id), sizeof(uint16_t), "packet_id"},
+     offsetof(struct rte_ipv4_hdr, packet_id), sizeof(uint16_t), "packet_id"},
     {offsetof(struct stub_mbuf_content, ipv4),
-     offsetof(struct ipv4_hdr, fragment_offset), sizeof(uint16_t),
+     offsetof(struct rte_ipv4_hdr, fragment_offset), sizeof(uint16_t),
      "fragment_offset"},
     {offsetof(struct stub_mbuf_content, ipv4),
-     offsetof(struct ipv4_hdr, time_to_live), sizeof(uint8_t), "time_to_live"},
+     offsetof(struct rte_ipv4_hdr, time_to_live), sizeof(uint8_t), "time_to_live"},
     {offsetof(struct stub_mbuf_content, ipv4),
-     offsetof(struct ipv4_hdr, next_proto_id), sizeof(uint8_t),
+     offsetof(struct rte_ipv4_hdr, next_proto_id), sizeof(uint8_t),
      "next_proto_id"},
     /*
     skip the checksum, as it is very hard to verify symbolically.
-    {offsetof(struct stub_mbuf_content, ipv4), offsetof(struct ipv4_hdr,
+    {offsetof(struct stub_mbuf_content, ipv4), offsetof(struct rte_ipv4_hdr,
     hdr_checksum), sizeof(uint16_t), "hdr_checksum"},
   */
     {offsetof(struct stub_mbuf_content, ipv4),
-     offsetof(struct ipv4_hdr, src_addr), sizeof(uint32_t), "src_addr"},
+     offsetof(struct rte_ipv4_hdr, src_addr), sizeof(uint32_t), "src_addr"},
     {offsetof(struct stub_mbuf_content, ipv4),
-     offsetof(struct ipv4_hdr, dst_addr), sizeof(uint32_t), "dst_addr"},
+     offsetof(struct rte_ipv4_hdr, dst_addr), sizeof(uint32_t), "dst_addr"},
 
     {offsetof(struct stub_mbuf_content, tcp),
-     offsetof(struct tcp_hdr, src_port), sizeof(uint16_t), "src_port"},
+     offsetof(struct rte_tcp_hdr, src_port), sizeof(uint16_t), "src_port"},
     {offsetof(struct stub_mbuf_content, tcp),
-     offsetof(struct tcp_hdr, dst_port), sizeof(uint16_t), "dst_port"},
+     offsetof(struct rte_tcp_hdr, dst_port), sizeof(uint16_t), "dst_port"},
     {offsetof(struct stub_mbuf_content, tcp),
-     offsetof(struct tcp_hdr, sent_seq), sizeof(uint32_t), "sent_seq"},
+     offsetof(struct rte_tcp_hdr, sent_seq), sizeof(uint32_t), "sent_seq"},
     {offsetof(struct stub_mbuf_content, tcp),
-     offsetof(struct tcp_hdr, recv_ack), sizeof(uint32_t), "recv_ack"},
+     offsetof(struct rte_tcp_hdr, recv_ack), sizeof(uint32_t), "recv_ack"},
     {offsetof(struct stub_mbuf_content, tcp),
-     offsetof(struct tcp_hdr, data_off), sizeof(uint8_t), "data_off"},
+     offsetof(struct rte_tcp_hdr, data_off), sizeof(uint8_t), "data_off"},
     {offsetof(struct stub_mbuf_content, tcp),
-     offsetof(struct tcp_hdr, tcp_flags), sizeof(uint8_t), "tcp_flags"},
-    {offsetof(struct stub_mbuf_content, tcp), offsetof(struct tcp_hdr, rx_win),
+     offsetof(struct rte_tcp_hdr, tcp_flags), sizeof(uint8_t), "tcp_flags"},
+    {offsetof(struct stub_mbuf_content, tcp), offsetof(struct rte_tcp_hdr, rx_win),
      sizeof(uint16_t), "rx_win"},
     /*
     skip the checksum, as it is very hard to verify symbolically.
-    {offsetof(struct stub_mbuf_content, tcp), offsetof(struct tcp_hdr, cksum),
+    {offsetof(struct stub_mbuf_content, tcp), offsetof(struct rte_tcp_hdr, cksum),
     sizeof(uint16_t), "cksum"},
   */
-    {offsetof(struct stub_mbuf_content, tcp), offsetof(struct tcp_hdr, tcp_urp),
+    {offsetof(struct stub_mbuf_content, tcp), offsetof(struct rte_tcp_hdr, tcp_urp),
      sizeof(uint16_t), "tcp_urp"},
 };
 static struct nested_nested_field_descr stub_mbuf_content_n2[] = {
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, d_addr), 0, sizeof(uint8_t), "a"},
+     offsetof(struct rte_ether_hdr, dst_addr), 0, sizeof(uint8_t), "dst_addr_0"},
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, d_addr), 1, sizeof(uint8_t), "b"},
+     offsetof(struct rte_ether_hdr, dst_addr), 1, sizeof(uint8_t), "dst_addr_1"},
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, d_addr), 2, sizeof(uint8_t), "c"},
+     offsetof(struct rte_ether_hdr, dst_addr), 2, sizeof(uint8_t), "dst_addr_2"},
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, d_addr), 3, sizeof(uint8_t), "d"},
+     offsetof(struct rte_ether_hdr, dst_addr), 3, sizeof(uint8_t), "dst_addr_3"},
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, d_addr), 4, sizeof(uint8_t), "e"},
+     offsetof(struct rte_ether_hdr, dst_addr), 4, sizeof(uint8_t), "dst_addr_4"},
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, d_addr), 5, sizeof(uint8_t), "f"},
+     offsetof(struct rte_ether_hdr, dst_addr), 5, sizeof(uint8_t), "dst_addr_5"},
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, s_addr), 0, sizeof(uint8_t), "a"},
+     offsetof(struct rte_ether_hdr, src_addr), 0, sizeof(uint8_t), "src_addr_0"},
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, s_addr), 1, sizeof(uint8_t), "b"},
+     offsetof(struct rte_ether_hdr, src_addr), 1, sizeof(uint8_t), "src_addr_1"},
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, s_addr), 2, sizeof(uint8_t), "c"},
+     offsetof(struct rte_ether_hdr, src_addr), 2, sizeof(uint8_t), "src_addr_2"},
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, s_addr), 3, sizeof(uint8_t), "d"},
+     offsetof(struct rte_ether_hdr, src_addr), 3, sizeof(uint8_t), "src_addr_3"},
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, s_addr), 4, sizeof(uint8_t), "e"},
+     offsetof(struct rte_ether_hdr, src_addr), 4, sizeof(uint8_t), "src_addr_4"},
     {offsetof(struct stub_mbuf_content, ether),
-     offsetof(struct ether_hdr, s_addr), 5, sizeof(uint8_t), "f"},
+     offsetof(struct rte_ether_hdr, src_addr), 5, sizeof(uint8_t), "src_addr_5"},
 };
 #define KLEE_TRACE_MBUF(m_ptr, mname, dir)                                     \
   klee_trace_extra_ptr(m_ptr, sizeof(*m_ptr), mname, "", "MBUF", dir);         \
@@ -146,11 +143,11 @@ static struct nested_nested_field_descr stub_mbuf_content_n2[] = {
   klee_trace_extra_ptr(u_ptr, sizeof(struct stub_mbuf_content),                \
                        "user_buf_addr", "", "MBUF", dir);                      \
   klee_trace_extra_ptr_field(u_ptr, offsetof(struct stub_mbuf_content, ether), \
-                             sizeof(struct ether_hdr), "ether", dir);          \
+                             sizeof(struct rte_ether_hdr), "ether", dir);          \
   klee_trace_extra_ptr_field(u_ptr, offsetof(struct stub_mbuf_content, ipv4),  \
-                             sizeof(struct ipv4_hdr), "ipv4", dir);            \
+                             sizeof(struct rte_ipv4_hdr), "ipv4", dir);            \
   klee_trace_extra_ptr_field(u_ptr, offsetof(struct stub_mbuf_content, tcp),   \
-                             sizeof(struct tcp_hdr), "tcp", dir);              \
+                             sizeof(struct rte_tcp_hdr), "tcp", dir);              \
   for (int i = 0; i < sizeof(stub_mbuf_content_nested) /                       \
                           sizeof(stub_mbuf_content_nested[0]);                 \
        ++i) {                                                                  \
@@ -264,7 +261,6 @@ bool stub_core_mbuf_create(uint16_t device, struct rte_mempool *pool,
   // vlan_tci_outer is symbolic
   (*mbufp)->buf_len = (uint16_t)buf_len;
   // timestamp is symbolic
-  (*mbufp)->udata64 = 0;
   (*mbufp)->pool = pool;
   (*mbufp)->next = buf_next;
   // tx_offload is symbolic
@@ -276,12 +272,12 @@ bool stub_core_mbuf_create(uint16_t device, struct rte_mempool *pool,
   // Force the IPv4 content to have sane values for symbex...
   struct stub_mbuf_content *buf_content =
       rte_pktmbuf_mtod(*mbufp, struct stub_mbuf_content *);
-  if (buf_content->ether.ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
+  if (buf_content->ether.ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
     // TODO can we make version_ihl symbolic?
     buf_content->ipv4.version_ihl =
         (4 << 4) | 5; // IPv4, 5x4 bytes - concrete to avoid symbolic indexing
     buf_content->ipv4.total_length =
-        rte_cpu_to_be_16(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr));
+        rte_cpu_to_be_16(sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_tcp_hdr));
   }
 #endif
 

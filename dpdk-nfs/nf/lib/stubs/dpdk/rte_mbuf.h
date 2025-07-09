@@ -27,7 +27,7 @@
 // HACK: We need rte_mbuf fully defined for the core_stub VeriFast contracts
 //       but we can't have core_stub depend on rte_mbuf.h because rte_mbuf.h includes core_stub.h
 //       so we define rte_mbuf in a special file, and we only include that one in core_mbuf when VeriFast-ing
-#include <_internal_rte_mbuf.h>
+#include <rte_mbuf_core.h>
 
 
 static void

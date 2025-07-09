@@ -28,7 +28,7 @@ void nf_core_init(void) {
 
 int nf_core_process(struct rte_mbuf *mbuf, time_t now) {
   // VIGOR_TAG(TRAFFIC_CLASS, PACKET_RECEIVED);
-  struct ipv4_hdr *ip_header = nf_get_mbuf_ipv4_header(mbuf);
+  struct rte_ipv4_hdr *ip_header = nf_get_mbuf_ipv4_header(mbuf);
   if (ip_header == NULL) {
     return mbuf->port;
   }
@@ -45,9 +45,9 @@ int nf_core_process(struct rte_mbuf *mbuf, time_t now) {
 #endif
 
   // L2 forwarding
-  struct ether_hdr *ether_header = nf_get_mbuf_ether_header(mbuf);
-  ether_header->s_addr = config.device_macs[dst_device];
-  ether_header->d_addr = config.endpoint_macs[dst_device];
+  struct rte_ether_hdr *ether_header = nf_get_mbuf_ether_header(mbuf);
+  ether_header->src_addr = config.device_macs[dst_device];
+  ether_header->dst_addr = config.endpoint_macs[dst_device];
 
   return dst_device;
 }

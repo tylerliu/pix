@@ -26,10 +26,10 @@ struct policer_config {
   uint32_t dyn_capacity;
 
    // MAC addresses of devices
-  struct ether_addr device_macs[RTE_MAX_ETHPORTS];
+  struct rte_ether_addr device_macs[RTE_MAX_ETHPORTS];
 
   // MAC addresses of the endpoints the devices are linked to
-  struct ether_addr endpoint_macs[RTE_MAX_ETHPORTS];
+  struct rte_ether_addr endpoint_macs[RTE_MAX_ETHPORTS];
 };
 
 void policer_config_init(struct policer_config *config, int argc, char **argv);

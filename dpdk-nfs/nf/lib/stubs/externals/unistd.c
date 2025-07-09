@@ -8,6 +8,8 @@
 
 #include <klee/klee.h>
 
+void orig_printf(const char * format, ...);
+
 unsigned int
 sleep(unsigned int seconds)
 {
