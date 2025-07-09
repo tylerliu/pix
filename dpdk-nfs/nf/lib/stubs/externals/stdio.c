@@ -16,6 +16,8 @@
 
 #include <klee/klee.h>
 
+void orig_printf(const char * format, ...);
+
 int snprintf(char *str, size_t size, const char *format, ...) {
   va_list args;
   va_start(args, format);
@@ -144,7 +146,7 @@ int snprintf(char *str, size_t size, const char *format, ...) {
   return orig_size - size;
 }
 
-int vfprintf(FILE *stream, const char *format, _G_va_list __arg) {
+int vfprintf(FILE *stream, const char *format, va_list __arg) {
   klee_assert(stream == stderr);
 
   return 0; // OK, whatever

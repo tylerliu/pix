@@ -3,6 +3,8 @@
 
 #include <klee/klee.h>
 
+void orig_printf(const char * format, ...);
+
 int fnmatch(const char *pattern, const char *string, int flags) {
   if (!strcmp(pattern, "*map_*") & !strcmp(string, ".") & flags == 0) {
     // Return value:

@@ -6,4 +6,4 @@
 
 
 bool
-handle_packet_timestamp(struct ipv4_hdr* header, uint32_t router_ip, uint32_t current_milliseconds_utc);
+handle_packet_timestamp(struct rte_ipv4_hdr* header, uint32_t router_ip, uint32_t current_milliseconds_utc);

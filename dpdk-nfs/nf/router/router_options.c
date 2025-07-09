@@ -1,7 +1,7 @@
 #include "router_options.h"
 
 bool
-handle_packet_timestamp(struct ipv4_hdr* header, uint32_t router_ip, uint32_t current_milliseconds_utc)
+handle_packet_timestamp(struct rte_ipv4_hdr* header, uint32_t router_ip, uint32_t current_milliseconds_utc)
 {
 	uint8_t options_length = (header->version_ihl & 0xF) - 5;
 	uint8_t* options_bytes = (uint8_t*) ((uint32_t*) header + 5);

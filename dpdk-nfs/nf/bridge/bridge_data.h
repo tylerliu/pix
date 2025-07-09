@@ -20,7 +20,7 @@ struct Vector;
 struct DoubleChain;
 
 struct StaticKey {
-  struct ether_addr addr;
+  struct rte_ether_addr addr;
   uint16_t device;
 };
 
@@ -86,7 +86,7 @@ int static_key_hash(void* key);
             result == st_key_hash(sk); @*/
 
 void init_nothing_ea(void* entry);
-/*@ requires chars(entry, sizeof(struct ether_addr), _); @*/
+/*@ requires chars(entry, sizeof(struct rte_ether_addr), _); @*/
 /*@ ensures ether_addrp(entry, _); @*/
 
 void init_nothing_dv(void* entry);

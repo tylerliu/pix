@@ -119,7 +119,7 @@ stub_device_start(struct stub_device* dev)
 	//uint32_t data_len = klee_int("data_len");
 	//klee_assume(packet_len <= 90); //Make sure it fits 1 mbuf
 	//klee_assume(data_len <= packet_len);
-	//klee_assume(sizeof(struct ether_hdr) <= data_len);
+	//klee_assume(sizeof(struct rte_ether_hdr) <= data_len);
 	if (!received) {
 		return;
 	}
@@ -246,7 +246,7 @@ stub_device_start(struct stub_device* dev)
 	if(is_ipv4) {
 		// TODO can we make version_ihl symbolic?
 		mbuf_content->ipv4.version_ihl = (4 << 4) | 5; // IPv4, 5x4 bytes - concrete to avoid symbolic indexing
-		mbuf_content->ipv4.total_length = rte_cpu_to_be_16(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr));
+		mbuf_content->ipv4.total_length = rte_cpu_to_be_16(sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_tcp_hdr));
 	}
 #endif//!FULLY_SYMBOLIC_BUF
 

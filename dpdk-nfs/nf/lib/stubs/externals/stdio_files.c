@@ -48,7 +48,7 @@ struct stub_mmap {
 struct stub_file {
 	// Folders MUST NOT have a trailing slash
 	// Unix-like multi-slash simplification (e.g. /a//b == /a/b) is NOT supported
-	char* path;
+	const char* path;
 
 	// Either: (file or symlink)
 	char* content;
@@ -123,7 +123,7 @@ int is_ktest_file(const char* file) {
 }
 
 #ifdef VIGOR_EXECUTABLE
-typedef int (*vfprintf_orig_type)(FILE *stream, const char *format, va_list ap);
+typedef int (*vfprintf_orig_type)(FILE *stream, const char *format, ...);
 
 void orig_printf(const char * format, ...)
 {
@@ -197,21 +197,24 @@ ssize_t orig_read(int fd, void *buf, size_t count) {
 
 #define MAX_FILE_SIZE (128*1024*1024)
 
+int stub_add_bin_file(const char* path, char* content, size_t content_len);
+
 int
 open(const char* file, int oflag, ...)
 {
-        //orig_printf("opening %s\n", file);
+        
+	//orig_printf("opening %s\n", file);
 
-        if (is_ktest_file(file)) {
-                orig_printf("special handling ktest file\n");
-                int orig_fd = orig_open(file, oflag, O_RDONLY);
-                void *buf = malloc(MAX_FILE_SIZE);
-                int read_len = orig_read(orig_fd, buf, MAX_FILE_SIZE);
-                int fd = stub_add_bin_file(file, buf, read_len);
-                orig_close(orig_fd);
-                FILES[fd].pos = 0;
-                return fd;
-        }
+	if (is_ktest_file(file)) {
+			orig_printf("special handling ktest file\n");
+			int orig_fd = orig_open(file, oflag, O_RDONLY);
+			void *buf = malloc(MAX_FILE_SIZE);
+			int read_len = orig_read(orig_fd, buf, MAX_FILE_SIZE);
+			int fd = stub_add_bin_file(file, buf, read_len);
+			orig_close(orig_fd);
+			FILES[fd].pos = 0;
+			return fd;
+	}
 
 	if (!strcmp(file, "/proc/cpuinfo") && oflag == O_RDONLY) {
 		return -1; // TODO
@@ -248,48 +251,48 @@ open(const char* file, int oflag, ...)
 int
 open64(const char* file, int oflag, ...)
 {
-        //orig_printf("opening %s\n", file);
+	//orig_printf("opening %s\n", file);
 
-        if (is_ktest_file(file)) {
-                orig_printf("special handling ktest file\n");
-                int orig_fd = orig_open(file, oflag, O_RDONLY);
-                void *buf = malloc(MAX_FILE_SIZE);
-                int read_len = orig_read(orig_fd, buf, MAX_FILE_SIZE);
-                int fd = stub_add_bin_file(file, buf, read_len);
-                orig_close(orig_fd);
-                FILES[fd].pos = 0;
-                return fd;
-        }
+	if (is_ktest_file(file)) {
+			orig_printf("special handling ktest file\n");
+			int orig_fd = orig_open(file, oflag, O_RDONLY);
+			void *buf = malloc(MAX_FILE_SIZE);
+			int read_len = orig_read(orig_fd, buf, MAX_FILE_SIZE);
+			int fd = stub_add_bin_file(file, buf, read_len);
+			orig_close(orig_fd);
+			FILES[fd].pos = 0;
+			return fd;
+	}
 
-        if (!strcmp(file, "/proc/cpuinfo") && oflag == O_RDONLY) {
-                return -1; // TODO
-        }
+	if (!strcmp(file, "/proc/cpuinfo") && oflag == O_RDONLY) {
+			return -1; // TODO
+	}
 
-        // NUMA map, unsupported for now
-        if (!strcmp(file, "/proc/self/numa_maps") && oflag == O_RDONLY) {
-                return -1; // TODO
-        }
+	// NUMA map, unsupported for now
+	if (!strcmp(file, "/proc/self/numa_maps") && oflag == O_RDONLY) {
+			return -1; // TODO
+	}
 
-        // Generic
-        enum stub_file_kind desired_kind = ((oflag & O_DIRECTORY) == O_DIRECTORY) ? KIND_DIRECTORY : KIND_FILE;
-        for (int n = 0; n < sizeof(FILES)/sizeof(FILES[0]); n++) {
-                if (FILES[n].path != NULL && !strcmp(file, FILES[n].path) && FILES[n].kind == desired_kind) {
-                        klee_assert(FILES[n].pos == POS_UNOPENED);
+	// Generic
+	enum stub_file_kind desired_kind = ((oflag & O_DIRECTORY) == O_DIRECTORY) ? KIND_DIRECTORY : KIND_FILE;
+	for (int n = 0; n < sizeof(FILES)/sizeof(FILES[0]); n++) {
+			if (FILES[n].path != NULL && !strcmp(file, FILES[n].path) && FILES[n].kind == desired_kind) {
+					klee_assert(FILES[n].pos == POS_UNOPENED);
 
-                        FILES[n].pos = 0;
+					FILES[n].pos = 0;
 
-                        return n;
-                }
-        }
+					return n;
+			}
+	}
 
-        // Other CPUs
-        const char* cpu_prefix = "/sys/devices/system/cpu/cpu";
-        if (!strncmp(file, cpu_prefix, strlen(cpu_prefix)) && oflag == O_RDONLY) {
-                return -1; // TODO
-        }
+	// Other CPUs
+	const char* cpu_prefix = "/sys/devices/system/cpu/cpu";
+	if (!strncmp(file, cpu_prefix, strlen(cpu_prefix)) && oflag == O_RDONLY) {
+			return -1; // TODO
+	}
 
-        // Not supported!
-        do {orig_printf("aborting on %s:%d\n", __LINE__, __FILE__);klee_abort();} while(0);
+	// Not supported!
+	do {orig_printf("aborting on %s:%d\n", __LINE__, __FILE__);klee_abort();} while(0);
 }
 
 int
@@ -558,7 +561,7 @@ mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
 		if ((void*) FILES[fd].content == DEVICES[n].mem) {
 			klee_assert(length == DEVICES[n].mem_len);
 
-			return DEVICES[n].mem;
+			return (void*) DEVICES[n].mem;
 		}
 	}
 
@@ -643,7 +646,7 @@ mmap64(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
                 if ((void*) FILES[fd].content == DEVICES[n].mem) {
                         klee_assert(length == DEVICES[n].mem_len);
 
-                        return DEVICES[n].mem;
+                        return (void*) DEVICES[n].mem;
                 }
         }
 
@@ -792,7 +795,7 @@ stub_stdio_files_init(void)
 	char* stub_pci_folder(const char* device_name);
 	char* stub_pci_addr(size_t addr);
 	int stub_add_file(char* path, char* content);
-	int stub_add_bin_file(char* path, char* content, size_t content_len);
+	int stub_add_bin_file(const char* path, char* content, size_t content_len);
 	int stub_add_link(char* path, char* content);
 	int stub_add_folder_array(char* path, int children_len, int* children);
 	int stub_add_folder(char* path, int children_len, ...);
@@ -973,7 +976,7 @@ stub_add_file(char* path, char* content)
 }
 
 int
-stub_add_bin_file(char* path, char* content, size_t content_len)
+stub_add_bin_file(const char* path, char* content, size_t content_len)
 {
 	struct stub_file file;
 	memset(&file, 0, sizeof(struct stub_file));

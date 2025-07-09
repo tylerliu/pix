@@ -190,7 +190,8 @@ source_install_dpdk()
 		libgoogle-perftools-dev \
 		libpcap-dev \
 		pkg-config \
-		python3-pyelftools
+		python3-pyelftools \
+		libibverbs-dev # for mlx5 driver
 
 	# Ensure environment is correct.
 	line "$PATHSFILE" 'RTE_SDK' "$BUILDDIR/dpdk"

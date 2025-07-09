@@ -22,7 +22,7 @@ struct LoadBalancedFlow {
 
 struct LoadBalancedBackend {
   uint16_t nic;
-  struct ether_addr mac;
+  struct rte_ether_addr mac;
   uint32_t ip;
 };
 
@@ -96,7 +96,7 @@ void lb_expire_flows(struct LoadBalancer *balancer, time_t now);
 void lb_expire_backends(struct LoadBalancer *balancer, time_t now);
 void lb_process_heartbit(struct LoadBalancer *balancer,
                          struct LoadBalancedFlow *flow,
-                         struct ether_addr mac_addr, int nic, time_t now);
+                         struct rte_ether_addr mac_addr, int nic, time_t now);
 
 #ifdef KLEE_VERIFICATION
 

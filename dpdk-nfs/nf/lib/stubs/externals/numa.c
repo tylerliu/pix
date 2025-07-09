@@ -7,6 +7,8 @@
 static bool NUMA_AVAILABLE = false;
 static bool NUMA_NODEMASK_CREATED = false;
 
+void orig_printf(const char * format, ...);
+
 int
 numa_available(void)
 {
@@ -44,9 +46,9 @@ numa_bitmask_free(struct bitmask *bmp)
 	free(bmp);
 }
 
-long
-get_mempolicy(int *policy, const unsigned long* nmask,
-		unsigned long maxnode, void* addr, int flags)
+long 
+get_mempolicy(int *mode, unsigned long *nmask,
+	unsigned long maxnode, void *addr, unsigned flags)
 {
 	// http://man7.org/linux/man-pages/man2/get_mempolicy.2.html
 	if (flags == 0) {
@@ -58,7 +60,7 @@ get_mempolicy(int *policy, const unsigned long* nmask,
 		// the buffers pointed to by mode and nodemask.  The value returned in
 		// these arguments may be used to restore the thread's policy to its
 		// state at the time of the call to get_mempolicy() using set_mempolicy(2).
-		*policy = 0;
+		*mode = 0;
 
 		// On success, get_mempolicy() returns 0; on error, -1 is returned and
 		// errno is set to indicate the error.

@@ -37,8 +37,8 @@ int nf_core_process(struct rte_mbuf *mbuf, time_t now) {
   //   return mbuf->port;
   // }
 
-  struct ether_hdr *ether_header = nf_get_mbuf_ether_header(mbuf);
-  struct ipv4_hdr *ip_header = nf_get_mbuf_ipv4_header(mbuf);
+  struct rte_ether_hdr *ether_header = nf_get_mbuf_ether_header(mbuf);
+  struct rte_ipv4_hdr *ip_header = nf_get_mbuf_ipv4_header(mbuf);
   // Are there timestamp options we must respect?
   if (ip_header == NULL) {
     VIGOR_TAG(TRAFFIC_CLASS, INVALID);

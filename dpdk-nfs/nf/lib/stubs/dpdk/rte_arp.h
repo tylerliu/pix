@@ -18,9 +18,9 @@
  * ARP header IPv4 payload.
  */
 struct arp_ipv4 {
-	struct ether_addr arp_sha;  /**< sender hardware address */
+	struct rte_ether_addr arp_sha;  /**< sender hardware address */
 	uint32_t          arp_sip;  /**< sender IP address */
-	struct ether_addr arp_tha;  /**< target hardware address */
+	struct rte_ether_addr arp_tha;  /**< target hardware address */
 	uint32_t          arp_tip;  /**< target IP address */
 } __attribute__((__packed__));
 
