@@ -14,7 +14,6 @@
 static struct str_field_descr mbuf_descrs[] = {
     // Do not forget about "buf_addr" -- it is a pointer that is why it is not
     // listed here.
-    {offsetof(struct rte_mbuf, buf_iova), sizeof(rte_iova_t), "buf_iova"},
     {offsetof(struct rte_mbuf, data_off), sizeof(uint16_t), "data_off"},
     {offsetof(struct rte_mbuf, refcnt), sizeof(uint16_t), "refcnt"},
     {offsetof(struct rte_mbuf, nb_segs), sizeof(uint16_t), "nb_segs"},
@@ -240,7 +239,7 @@ bool stub_core_mbuf_create(uint16_t device, struct rte_mempool *pool,
   // Keep concrete values for what a driver guarantees
   // (assignments are in the same order as the rte_mbuf declaration)
   (*mbufp)->buf_addr = (char *)(*mbufp) + mbuf_size;
-  (*mbufp)->buf_iova = (rte_iova_t)(*mbufp)->buf_addr; // we assume VA = PA
+  // (*mbufp)->buf_iova = (rte_iova_t)(*mbufp)->buf_addr; // we assume VA = PA
   // TODO: make data_off symbolic (but then we get symbolic pointer addition...)
   // Alternative: Somehow prove that the code never touches anything outside of
   // the [data_off, data_off+data_len] range...

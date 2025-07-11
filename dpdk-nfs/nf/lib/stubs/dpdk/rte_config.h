@@ -3,3 +3,7 @@
 // Reasonable values
 #define RTE_MAX_ETHPORTS 32
 #define RTE_MAX_QUEUES_PER_PORT 1
+
+#define RTE_PKTMBUF_HEADROOM 128
+
+#define RTE_MAX_ETHPORTS 32

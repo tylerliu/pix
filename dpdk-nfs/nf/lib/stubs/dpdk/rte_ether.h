@@ -71,7 +71,7 @@ extern "C" {
  */
 struct rte_ether_addr {
 	uint8_t addr_bytes[RTE_ETHER_ADDR_LEN]; /**< Addr bytes in tx order */
-} __rte_aligned(2);
+} __attribute__((__aligned__(2)));
 
 #define RTE_ETHER_LOCAL_ADMIN_ADDR 0x02 /**< Locally assigned Eth. address. */
 #define RTE_ETHER_GROUP_ADDR  0x01 /**< Multicast or broadcast Eth. address. */
@@ -249,18 +249,7 @@ rte_ether_addr_copy(const struct rte_ether_addr *__restrict ea_from,
  * @param eth_addr
  *   A pointer to a ether_addr structure.
  */
-void
-rte_ether_format_addr(char *buf, uint16_t size,
-		      const struct rte_ether_addr *eth_addr) 
-{
-	snprintf(buf, size, RTE_ETHER_ADDR_FMT,
-		eth_addr->addr_bytes[0],
-		eth_addr->addr_bytes[1],
-		eth_addr->addr_bytes[2],
-		eth_addr->addr_bytes[3],
-		eth_addr->addr_bytes[4],
-		eth_addr->addr_bytes[5]);
-}
+void rte_ether_format_addr(char *buf, uint16_t size, const struct rte_ether_addr *eth_addr);
 /**
  * Convert string with Ethernet address to an ether_addr.
  *
@@ -275,17 +264,7 @@ rte_ether_format_addr(char *buf, uint16_t size,
  *   0 if successful
  *   -1 and sets rte_errno if invalid string
  */
-int
-rte_ether_unformat_addr(const char *str, struct rte_ether_addr *eth_addr)
-{
-	return sscanf(str, RTE_ETHER_ADDR_FMT,
-		&eth_addr->addr_bytes[0],
-		&eth_addr->addr_bytes[1],
-		&eth_addr->addr_bytes[2],
-		&eth_addr->addr_bytes[3],
-		&eth_addr->addr_bytes[4],
-		&eth_addr->addr_bytes[5]);
-}
+int rte_ether_unformat_addr(const char *str, struct rte_ether_addr *eth_addr);
 /**
  * Ethernet header: Contains the destination address, source address
  * and frame type.
@@ -294,7 +273,7 @@ struct rte_ether_hdr {
 	struct rte_ether_addr dst_addr; /**< Destination address. */
 	struct rte_ether_addr src_addr; /**< Source address. */
 	rte_be16_t ether_type; /**< Frame type. */
-} __rte_aligned(2);
+};
 
 /**
  * Ethernet VLAN Header.
@@ -304,7 +283,7 @@ struct rte_ether_hdr {
 struct rte_vlan_hdr {
 	rte_be16_t vlan_tci;  /**< Priority (3) + CFI (1) + Identifier Code (12) */
 	rte_be16_t eth_proto; /**< Ethernet type of encapsulated frame. */
-} __rte_packed;
+};
 
 
 

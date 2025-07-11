@@ -17,7 +17,8 @@
  */
 
 #include <stdint.h>
-
+#include <limits.h>
+#include <rte_common.h>
 #include <rte_byteorder.h>
 
 #ifdef __cplusplus
@@ -475,7 +476,7 @@ struct rte_mbuf {
 	 * same mbuf cacheline0 layout for 32-bit and 64-bit. This makes
 	 * working on vector drivers easier.
 	 */
-	rte_iova_t buf_iova __rte_aligned(sizeof(rte_iova_t));
+	rte_iova_t buf_iova __attribute__((__aligned__(sizeof(rte_iova_t))));
 #else
 	/**
 	 * Next segment of scattered packet.
@@ -597,7 +598,7 @@ struct rte_mbuf {
 	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
 
 	/* second cache line - fields only used in slow path or on TX */
-	RTE_MARKER cacheline1 __rte_cache_min_aligned;
+	RTE_MARKER cacheline1 __attribute__((__aligned__(16)));
 
 #if RTE_IOVA_AS_PA
 	/**
@@ -665,7 +666,12 @@ struct rte_mbuf {
 	uint16_t timesync;
 
 	uint32_t dynfield1[9]; /**< Reserved for dynamic fields. */
-} __rte_cache_aligned;
+}
+#ifdef _NO_VERIFAST_
+  __rte_cache_aligned;
+#else//_NO_VERIFAST_
+;
+#endif//_NO_VERIFAST_
 
 /**
  * Function typedef of callback to free externally attached buffer.

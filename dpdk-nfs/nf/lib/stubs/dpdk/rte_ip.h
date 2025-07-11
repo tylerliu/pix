@@ -4,6 +4,9 @@
 
 #include <klee/klee.h>
 #include <stdint.h>
+#include <rte_byteorder.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 
 #define IPV4_HDR_IHL_MASK 0x0F
 #define IPV4_IHL_MULTIPLIER 4

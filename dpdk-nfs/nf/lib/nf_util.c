@@ -18,9 +18,6 @@
 
 #include "nf_util.h"
 
-// Stub for missing rte_ipv4_icmp_cksum function
-uint16_t rte_ipv4_icmp_cksum(struct rte_ipv4_hdr *ip_hdr, struct rte_icmp_hdr *icmp_hdr);
-
 struct rte_ether_hdr *nf_get_mbuf_ether_header(struct rte_mbuf *mbuf) {
   return rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr *);
 }

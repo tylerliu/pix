@@ -7,6 +7,7 @@
 
 #include <rte_mempool.h>
 #include <rte_memory.h>
+#include <rte_config.h>
 
 #include "lib/stubs/core_stub.h"
 
@@ -16,28 +17,12 @@
 #define klee_assert
 #endif
 
-
-#define RTE_MBUF_DEFAULT_BUF_SIZE (2048 + 128)
-
-
-#define rte_pktmbuf_mtod_offset(m, t, o) ((t)((char *)(m)->buf_addr + (m)->data_off + (o)))
-#define rte_pktmbuf_mtod(m, t) rte_pktmbuf_mtod_offset(m, t, 0)
-
-
 // HACK: We need rte_mbuf fully defined for the core_stub VeriFast contracts
 //       but we can't have core_stub depend on rte_mbuf.h because rte_mbuf.h includes core_stub.h
 //       so we define rte_mbuf in a special file, and we only include that one in core_mbuf when VeriFast-ing
 #include <rte_mbuf_core.h>
 
-
-static void
-rte_mbuf_sanity_check(const struct rte_mbuf* m, int is_header)
-{
-	klee_assert(m != NULL);
-	klee_assert(is_header == 1);
-
-	// TODO checks?
-}
+void rte_mbuf_sanity_check(const struct rte_mbuf* m, int is_header);
 
 static struct rte_mempool*
 rte_pktmbuf_pool_create(const char *name, unsigned n, unsigned cache_size,

@@ -6,6 +6,7 @@
 #include <linux/limits.h>
 #include <sys/types.h>
 #include <string.h>
+#include <netinet/in.h>
 
 #include <rte_common.h>
 #include <rte_config.h>
