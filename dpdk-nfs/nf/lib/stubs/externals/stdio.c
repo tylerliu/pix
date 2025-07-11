@@ -113,10 +113,8 @@ int snprintf(char *str, size_t size, const char *format, ...) {
             size--;
           }
         } else {
-          do {
-            orig_printf("aborting on %s:%d\n", __LINE__, __FILE__);
-            klee_abort();
-          } while (0); // not supported!
+          orig_printf("aborting on %s:%d\n", __LINE__, __FILE__);
+          klee_abort();
         }
       }
     } else {
@@ -144,6 +142,155 @@ int snprintf(char *str, size_t size, const char *format, ...) {
   // no size-- here, return value does not include null terminator
 
   return orig_size - size;
+}
+
+int sscanf(const char *str, const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+
+  int items_read = 0;
+  int len = strlen(format);
+  int str_pos = 0;
+  int str_len = strlen(str);
+
+  for (int f = 0; f < len; f++) {
+    if (format[f] == '%') {
+      klee_assert(f < len - 1);
+
+      f++;
+      if (format[f] == 's') {
+        char *arg = va_arg(args, char *);
+        int arg_len = 0;
+        
+        // Skip leading whitespace
+        while (str_pos < str_len && (str[str_pos] == ' ' || str[str_pos] == '\t')) {
+          str_pos++;
+        }
+        
+        // Read until whitespace or end of string
+        while (str_pos < str_len && str[str_pos] != ' ' && str[str_pos] != '\t' && str[str_pos] != '\0') {
+          arg[arg_len] = str[str_pos];
+          arg_len++;
+          str_pos++;
+        }
+        
+        arg[arg_len] = '\0';
+        items_read++;
+        
+      } else if (format[f] == 'u') {
+        unsigned *arg = va_arg(args, unsigned *);
+        unsigned value = 0;
+        
+        // Skip leading whitespace
+        while (str_pos < str_len && (str[str_pos] == ' ' || str[str_pos] == '\t')) {
+          str_pos++;
+        }
+        
+        // Read single digit
+        if (str_pos < str_len && str[str_pos] >= '0' && str[str_pos] <= '9') {
+          value = str[str_pos] - '0';
+          str_pos++;
+        }
+        
+        *arg = value;
+        items_read++;
+        
+      } else if (format[f] == 'd' || format[f] == 'x') {
+        int *arg = va_arg(args, int *);
+        int value = 0;
+        
+        // Skip leading whitespace
+        while (str_pos < str_len && (str[str_pos] == ' ' || str[str_pos] == '\t')) {
+          str_pos++;
+        }
+        
+        if (format[f] == 'x') {
+          // Read hex digits
+          while (str_pos < str_len && 
+                 ((str[str_pos] >= '0' && str[str_pos] <= '9') ||
+                  (str[str_pos] >= 'a' && str[str_pos] <= 'f') ||
+                  (str[str_pos] >= 'A' && str[str_pos] <= 'F'))) {
+            int digit;
+            if (str[str_pos] >= '0' && str[str_pos] <= '9') {
+              digit = str[str_pos] - '0';
+            } else if (str[str_pos] >= 'a' && str[str_pos] <= 'f') {
+              digit = str[str_pos] - 'a' + 10;
+            } else {
+              digit = str[str_pos] - 'A' + 10;
+            }
+            value = value * 16 + digit;
+            str_pos++;
+          }
+        } else {
+          // Read single digit for decimal
+          if (str_pos < str_len && str[str_pos] >= '0' && str[str_pos] <= '9') {
+            value = str[str_pos] - '0';
+            str_pos++;
+          }
+        }
+        
+        *arg = value;
+        items_read++;
+        
+      } else {
+        // Handle format specifiers like %2x, %4x
+        if ((f < len) && (format[f] == '.')) {
+          f++; // Skip the dot
+        }
+        
+        if ((f < len) && (format[f] == '0')) {
+          f++; // Skip zero padding
+        }
+        
+        if ((f < len - 1) && (format[f] == '2' || format[f] == '4') &&
+            (format[f + 1] == 'x' || format[f + 1] == 'X')) {
+          int format_len = format[f] == '2' ? 2 : 4;
+          f++;
+          
+          int *arg = va_arg(args, int *);
+          int value = 0;
+          
+          // Skip leading whitespace
+          while (str_pos < str_len && (str[str_pos] == ' ' || str[str_pos] == '\t')) {
+            str_pos++;
+          }
+          
+          // Read exactly format_len hex digits
+          for (int n = 0; n < format_len && str_pos < str_len; n++) {
+            int digit = 0;
+            if (str[str_pos] >= '0' && str[str_pos] <= '9') {
+              digit = str[str_pos] - '0';
+            } else if (str[str_pos] >= 'a' && str[str_pos] <= 'f') {
+              digit = str[str_pos] - 'a' + 10;
+            } else if (str[str_pos] >= 'A' && str[str_pos] <= 'F') {
+              digit = str[str_pos] - 'A' + 10;
+            } else {
+              break; // Invalid hex digit
+            }
+            value = value * 16 + digit;
+            str_pos++;
+          }
+          
+          *arg = value;
+          items_read++;
+        } else {
+          orig_printf("aborting on %s:%d\n", __LINE__, __FILE__);
+          klee_abort(); // not supported!
+        }
+      }
+    } else {
+      // Skip literal characters in format
+      if (str_pos < str_len && str[str_pos] == format[f]) {
+        str_pos++;
+      } else {
+        // Format doesn't match input
+        break;
+      }
+    }
+  }
+
+  va_end(args);
+  return items_read;
 }
 
 int vfprintf(FILE *stream, const char *format, va_list __arg) {
@@ -191,20 +338,16 @@ ssize_t write(int fd, const void *buf, size_t count) {
         } else if (*((uint32_t *)buf) == 1) {
           DEVICES[n].interrupts_enabled = true;
         } else {
-          do {
-            orig_printf("aborting on %s:%d\n", __LINE__, __FILE__);
-            klee_abort();
-          } while (0);
+          orig_printf("aborting on %s:%d\n", __LINE__, __FILE__);
+          klee_abort();
         }
 
         goto success;
       }
     }
 
-    do {
-      orig_printf("aborting on %s:%d\n", __LINE__, __FILE__);
-      klee_abort();
-    } while (0);
+    orig_printf("aborting on %s:%d\n", __LINE__, __FILE__);
+    klee_abort();
   }
 
   // "On success, the number of bytes written is returned (zero indicates

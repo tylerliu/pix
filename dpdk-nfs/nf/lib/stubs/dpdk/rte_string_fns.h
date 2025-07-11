@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 // we include the actual function implementation in the Makefile
 // here it's just the header
 int

@@ -160,7 +160,7 @@ VERIF_INCLUDES := -I $(SELF_DIR) -I $(KLEE_INCLUDE)
 # For meson DPDK, we need to handle cmdline library differently
 ifdef DPDK_MESON_BUILD
     # With meson DPDK, cmdline is part of the main library
-    VERIF_INCLUDES += -I $(DPDK_INC)
+    VERIF_INCLUDES += -I $(RTE_SDK)/lib/cmdline
 else
     # Legacy DPDK - include cmdline library path
     VERIF_INCLUDES += -I $(RTE_SDK)/lib/librte_cmdline
@@ -185,6 +185,8 @@ VERIF_FILES += ../lib/stubs/containers/map-stub.c \
                ../lib/stubs/containers/traced-variables-stub.c \
 							 ../router/router_options_stub.c \
                ../lpm/lpm_stub.c
+VERIF_FILES += ../lib/stubs/dpdk/dpdk_stubs.c
+VERIF_FILES += ../lib/stubs/dpdk/rte_ethdev.c
 
 # Specific NF stubs
 VERIF_FILES += $(NF_VERIF_FILES)
