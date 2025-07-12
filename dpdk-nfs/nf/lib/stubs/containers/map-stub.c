@@ -92,10 +92,10 @@ __attribute__((noinline)) int map_get(struct Map *map, void *key,
   /* Tracing function and necessary variable(s) */
   klee_trace_ret();
   /* To differentiate between different maps */
-  klee_trace_param_i32((uint32_t)map, "map");
+  klee_trace_param_i32((uint32_t)(uintptr_t)map, "map");
   // klee_trace_param_tagged_ptr(key, map->key_size, "key", "", TD_BOTH);
 
-  TRACE_VAL((uint32_t)(map), "map", _u32)
+  TRACE_VAL((uint32_t)(uintptr_t)map, "map", _u32)
   TRACE_VAR(map->capacity, "map_capacity")
   TRACE_VAR(map->occupancy, "map_occupancy")
   TRACE_VAR(map->Num_bucket_traversals, "Num_bucket_traversals")
@@ -201,9 +201,9 @@ __attribute__((noinline)) void map_put(struct Map *map, void *key, int value) {
   klee_trace_ret();
   ds_path_1();
   /* To differentiate between different maps */
-  klee_trace_param_i32((uint32_t)map, "map");
+  klee_trace_param_i32((uint32_t)(uintptr_t)map, "map");
 
-  TRACE_VAL((uint32_t)(map), "map", _u32)
+  TRACE_VAL((uint32_t)(uintptr_t)map, "map", _u32)
   TRACE_VAR(map->capacity, "map_capacity")
   TRACE_VAR(map->occupancy, "map_occupancy")
   TRACE_VAR(map->Num_bucket_traversals, "Num_bucket_traversals")
@@ -260,9 +260,9 @@ __attribute__((noinline)) void map_erase(struct Map *map, void *key,
   klee_trace_ret();
   ds_path_1();
   /* To differentiate between different maps */
-  klee_trace_param_i32((uint32_t)map, "map");
+  klee_trace_param_i32((uint32_t)(uintptr_t)map, "map");
 
-  TRACE_VAL((uint32_t)(map), "map", _u32)
+  TRACE_VAL((uint32_t)(uintptr_t)map, "map", _u32)
   TRACE_VAR(map->capacity, "map_capacity")
   TRACE_VAR(map->occupancy, "map_occupancy")
   TRACE_VAR(map->Num_bucket_traversals, "Num_bucket_traversals")
@@ -317,7 +317,7 @@ __attribute__((noinline)) int map_size(struct Map *map) {
   klee_trace_ret();
   ds_path_1();
   /* To differentiate between different maps */
-  klee_trace_param_i32((uint32_t)map, "map");
+  klee_trace_param_i32((uint32_t)(uintptr_t)map, "map");
   char *sym_name = ".size";
   char *final_sym_name = (char *)malloc(1 + strlen(map->id) + strlen(sym_name));
   strcpy(final_sym_name, map->id);

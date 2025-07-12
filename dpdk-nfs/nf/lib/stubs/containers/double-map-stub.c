@@ -112,7 +112,7 @@ int dmap_allocate(map_keys_equality eq_a, map_key_hash hsh_a,
 
     /* Tracing other variable(s) */
 
-    TRACE_VAL((uint32_t)(*map_out), "dmap", _u32)
+    TRACE_VAL((uint32_t)(uintptr_t)*map_out, "dmap", _u32)
 
     TRACE_VAR((*map_out)->capacity, "dmap_capacity")
     TRACE_VAR((*map_out)->occupancy, "dmap_occupancy")
@@ -134,9 +134,9 @@ int dmap_get_a(struct DoubleMap *map, void *key, int *index) {
 
   klee_trace_ret();
   /* To differentiate between different maps */
-  klee_trace_param_i32((uint32_t)map, "map");
+  klee_trace_param_i32((uint32_t)(uintptr_t)map, "map");
 
-  TRACE_VAL((uint32_t)(map), "dmap", _u32)
+  TRACE_VAL((uint32_t)(uintptr_t)map, "dmap", _u32)
   TRACE_VAR(map->has_this_key, "dmap_has_this_key")
   TRACE_VAR(Num_bucket_traversals, "Num_bucket_traversals")
   TRACE_VAR(Num_hash_collisions, "Num_hash_collisions")
@@ -172,9 +172,9 @@ int dmap_get_b(struct DoubleMap *map, void *key, int *index) {
   /* Tracing function and necessary variable(s) */
   klee_trace_ret();
   /* To differentiate between different maps */
-  klee_trace_param_i32((uint32_t)map, "map");
+  klee_trace_param_i32((uint32_t)(uintptr_t)map, "map");
 
-  TRACE_VAL((uint32_t)(map), "dmap", _u32)
+  TRACE_VAL((uint32_t)(uintptr_t)map, "dmap", _u32)
   TRACE_VAR(map->has_this_key, "dmap_has_this_key")
   TRACE_VAR(Num_bucket_traversals, "Num_bucket_traversals")
   TRACE_VAR(Num_hash_collisions, "Num_hash_collisions")
@@ -209,9 +209,9 @@ int dmap_put(struct DoubleMap *map, void *value_, int index) {
   /* Tracing function and necessary variable(s) */
   klee_trace_ret();
   /* To differentiate between different maps */
-  klee_trace_param_i32((uint32_t)map, "map");
+  klee_trace_param_i32((uint32_t)(uintptr_t)map, "map");
 
-  TRACE_VAL((uint32_t)(map), "dmap", _u32)
+  TRACE_VAL((uint32_t)(uintptr_t)map, "dmap", _u32)
   TRACE_VAR(map->has_this_key, "dmap_has_this_key")
   TRACE_VAR(Num_bucket_traversals, "Num_bucket_traversals")
   TRACE_VAR(Num_hash_collisions, "Num_hash_collisions")
@@ -246,7 +246,7 @@ int dmap_put(struct DoubleMap *map, void *value_, int index) {
 int dmap_erase(struct DoubleMap *map, int index) {
   klee_assert(map != NULL);
   ALLOW(map);
-  klee_trace_param_i32((uint32_t)map, "map");
+  klee_trace_param_i32((uint32_t)(uintptr_t)map, "map");
   klee_trace_param_i32(index, "index");
 
   klee_assert(0); // This model does not support erasure.
@@ -260,9 +260,9 @@ void dmap_get_value(struct DoubleMap *map, int index, void *value_out) {
   /* Tracing function and necessary variable(s) */
   klee_trace_ret();
   /* To differentiate between different maps */
-  klee_trace_param_i32((uint32_t)map, "map");
+  klee_trace_param_i32((uint32_t)(uintptr_t)map, "map");
 
-  TRACE_VAL((uint32_t)(map), "dmap", _u32)
+  TRACE_VAL((uint32_t)(uintptr_t)map, "dmap", _u32)
   TRACE_VAR(recent_flow, "recent_flow")
 
   if (map->entry_claimed) {

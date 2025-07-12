@@ -10,13 +10,13 @@ int expire_items(struct DoubleChain *chain, struct DoubleMap *map,
   ALLOW(map);
   klee_trace_ret();
   /* To differentiate between different flowmanager */
-  klee_trace_param_i32((uint32_t)chain, "chain");
-  klee_trace_param_i32((uint32_t)map, "map");
+  klee_trace_param_i32((uint32_t)(uintptr_t)chain, "chain");
+  klee_trace_param_i32((uint32_t)(uintptr_t)map, "map");
 
   int *occupancyp = dmap_occupancy_p(map);
   DENY(map);
 
-  TRACE_VAL((uint32_t)(map), "dmap", _u32)
+  TRACE_VAL((uint32_t)(uintptr_t)map, "dmap", _u32)
   TRACE_VAR(Num_bucket_traversals, "Num_bucket_traversals")
   TRACE_VAR(Num_hash_collisions, "Num_hash_collisions")
   TRACE_VAR(recent_flow, "recent_flow")
@@ -37,11 +37,11 @@ int expire_items_single_map(struct DoubleChain *chain, struct Vector *vector,
                             struct Map *map, time_t time) {
   klee_trace_ret();
   /* To differentiate between different flowmanagers */
-  klee_trace_param_i32((uint32_t)chain, "chain");
-  klee_trace_param_i32((uint32_t)vector, "vector");
-  klee_trace_param_i32((uint32_t)map, "map");
+  klee_trace_param_i32((uint32_t)(uintptr_t)chain, "chain");
+  klee_trace_param_i32((uint32_t)(uintptr_t)vector, "vector");
+  klee_trace_param_i32((uint32_t)(uintptr_t)map, "map");
 
-  TRACE_VAL((uint32_t)(map), "map", _u32)
+  TRACE_VAL((uint32_t)(uintptr_t)map, "map", _u32)
 
   int nfreed = klee_int("number_of_freed_flows");
   klee_assume(0 <= nfreed);

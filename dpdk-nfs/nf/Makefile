@@ -154,6 +154,7 @@ VERIF_FLAGS += $(NF_VERIF_FLAGS)
 
 # Klee-runtime executable compilation flags. Replay is unconditional here.
 EXEC_FLAGS := -c -g -O2 -std=c99 -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
+CPP_EXEC_FLAGS := -c -g -O2 -std=c++11 -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
 # Basic includes: NF root and KLEE
 VERIF_INCLUDES := -I $(SELF_DIR) -I $(KLEE_INCLUDE)
 
@@ -249,7 +250,9 @@ EXECUTABLE_OBJ_FILES := nf_main.o nf_util.o
 # DS Stubs
 EXECUTABLE_OBJ_FILES += double-chain-stub.o expirator-stub.o map-stub.o double-map-stub.o vector-stub.o traced-variables-stub.o 
 # DPDK cmdline parsing library
-EXECUTABLE_OBJ_FILES +=	cmdline_socket.o cmdline.o cmdline_cirbuf.o cmdline_parse.o cmdline_parse_*.o cmdline_rdline.o cmdline_vt100.o
+EXECUTABLE_OBJ_FILES +=	cmdline.o cmdline_cirbuf.o cmdline_parse.o cmdline_parse_*.o cmdline_rdline.o cmdline_socket.o cmdline_vt100.o cmdline_os_unix.o	
+# DPDK stubs
+EXECUTABLE_OBJ_FILES += dpdk_stubs.o rte_ethdev.o
 # Low-level stubs
 EXECUTABLE_OBJ_FILES +=	core_stub.o time_stub.o time.o timerfd.o intrinsics.o
 # Klee stuff
@@ -260,6 +263,7 @@ EXECUTABLE_OBJ_FILES += KTest.o
 CLEAN_COMMAND := rm -f *.bc executable *.o
 # Compilation
 COMPILE_COMMAND := clang
+CPP_COMPILE_COMMAND := clang++
 # Linking
 LINK_COMMAND := llvm-link -o nf.bc *.bc
 # KLEE verification
@@ -298,33 +302,35 @@ verify-hardware:
 
 executable-vignat executable-bridge executable-vigbalancer executable-lpm executable-vigpol executable-vigfw executable-nop executable-router executable-firewall executable-stateless-toy executable-dpdk_nat executable-natasha:
 	$(CLEAN_COMMAND)
-	gcc $(VERIF_DEFS) -DVIGOR_STUB_DPDK $(VERIF_INCLUDES) \
-	  -I $(SELF_DIR)/lib/stubs/dpdk $(VERIF_FILES) $(EXEC_FLAGS) $(NF_VERIF_FLAGS) \
-     $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
-	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
-	 gcc -o executable $(NF_EXECUTABLE_OBJ_FILES) $(EXECUTABLE_OBJ_FILES)
+	$(COMPILE_COMMAND) $(VERIF_DEFS) -DVIGOR_STUB_DPDK $(VERIF_INCLUDES) \
+			-I $(SELF_DIR)/lib/stubs/dpdk $(VERIF_FILES) $(EXEC_FLAGS) $(NF_VERIF_FLAGS) \
+    		$(KLEE_ROOT)/runtime/Runtest/intrinsics.c
+	$(CPP_COMPILE_COMMAND) $(VERIF_DEFS) -DVIGOR_STUB_DPDK -I $(KLEE_INCLUDE) \
+			$(CPP_EXEC_FLAGS) $(NF_VERIF_FLAGS) $(KLEE_ROOT)/lib/Basic/KTest.cpp
+	$(COMPILE_COMMAND) -o executable $(NF_EXECUTABLE_OBJ_FILES) $(EXECUTABLE_OBJ_FILES)
 
 executable-click:
 	$(CLEAN_COMMAND)
-	gcc $(VERIF_DEFS) -DVIGOR_STUB_DPDK $(VERIF_INCLUDES) \
-	  -I $(SELF_DIR)/lib/stubs/dpdk $(VERIF_FILES) $(EXEC_FLAGS) \
-     $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
-	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
-	 gcc -o executable `echo "$(CLICK_FILE)" | sed 's/\.c/\.o/'` $(EXECUTABLE_OBJ_FILES)
+	$(COMPILE_COMMAND) $(VERIF_DEFS) -DVIGOR_STUB_DPDK $(VERIF_INCLUDES) \
+			-I $(SELF_DIR)/lib/stubs/dpdk $(VERIF_FILES) $(EXEC_FLAGS) \
+    		$(KLEE_ROOT)/runtime/Runtest/intrinsics.c
+	$(CPP_COMPILE_COMMAND) $(VERIF_DEFS) -DVIGOR_STUB_DPDK -I $(KLEE_INCLUDE) \
+			$(CPP_EXEC_FLAGS) $(NF_VERIF_FLAGS) $(KLEE_ROOT)/lib/Basic/KTest.cpp
+	$(COMPILE_COMMAND) -o executable `echo "$(CLICK_FILE)" | sed 's/\.c/\.o/'` $(EXECUTABLE_OBJ_FILES)
 
 executable-vignat-hardware:
 	$(CLEAN_COMMAND)
-	gcc $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
+	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
 	    $(SELF_DIR)/lib/stubs/fcntl_open.c $(SELF_DIR)/lib/stubs/sigaction.c \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
 	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
 	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
-	gcc $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
+	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
 	    -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) \
 	    -c -g -O0 -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
 	rm -f rte_table_acl.o
-	gcc -g -Wl,--no-as-needed -ldl -lm -o executable \
+	$(COMPILE_COMMAND) -g -Wl,--no-as-needed -ldl -lm -o executable \
 	        nf_main.o nat_forward_vignat.o nf_util.o nat_config.o \
 	        nat-flowmanager.o nat-flow.o nat-loop.o nat-state.o \
 	        hardware_stub.o \
@@ -351,18 +357,18 @@ executable-vignat-hardware:
 	
 executable-bridge-hardware:
 	$(CLEAN_COMMAND)
-	gcc $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(EXEC_FLAGS) \
+	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(EXEC_FLAGS) \
 	    $(SELF_DIR)/lib/stubs/fcntl_open.c \
 	    $(SELF_DIR)/lib/stubs/sigaction.c \
 	    $(SELF_DIR)/lib/stubs/hardware_stub.c \
 	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
 	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
-	gcc $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
+	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
 	    -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) \
 	    -c -g -O0  -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
 	rm -f rte_table_acl.o
-	gcc -g -Wl,--no-as-needed -ldl -lm -o executable \
+	$(COMPILE_COMMAND) -g -Wl,--no-as-needed -ldl -lm -o executable \
 	        nf_main.o bridge_forward.o nf_util.o bridge_config.o bridge_data.o \
 	        hardware_stub.o \
 		dpdk_mempool_singleton.o \
@@ -388,17 +394,17 @@ executable-bridge-hardware:
 
 executable-vigbalancer-hardware:
 	$(CLEAN_COMMAND)
-	gcc $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
+	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
 	    $(SELF_DIR)/lib/stubs/fcntl_open.c $(SELF_DIR)/lib/stubs/sigaction.c \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
 	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
 	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
-	gcc $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
+	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
 	    -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) \
 	    -c -g -O0 -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
 	rm -f rte_table_acl.o
-	gcc -g -Wl,--no-as-needed -ldl -lm -o executable \
+	$(COMPILE_COMMAND) -g -Wl,--no-as-needed -ldl -lm -o executable \
 	        nf_util.o nf_main.o lb_main.o lb_balancer.o lb_config.o lb_data.o lb_loop.o \
 	        hardware_stub.o \
 		dpdk_mempool_singleton.o \
@@ -425,16 +431,16 @@ executable-vigbalancer-hardware:
 
 
 executable-lpm-hardware:
-	gcc $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
+	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
 	    $(SELF_DIR)/lib/stubs/fcntl_open.c $(SELF_DIR)/lib/stubs/sigaction.c \
 	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
 	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
-	gcc $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
+	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
 	    -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) \
 	    -c -g -O0  -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
 	rm -f rte_table_acl.o
-	gcc -g -Wl,--no-as-needed -ldl -lm -o executable \
+	$(COMPILE_COMMAND) -g -Wl,--no-as-needed -ldl -lm -o executable \
         nf_main.o lpm.o lpm_stub.o nf_util.o nat_config.o\
 	        hardware_stub.o \
 		dpdk_mempool_singleton.o \
@@ -459,18 +465,18 @@ executable-lpm-hardware:
 
 executable-router-hardware:
 	$(CLEAN_COMMAND)
-	gcc $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
+	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
 	    $(SELF_DIR)/lib/stubs/fcntl_open.c $(SELF_DIR)/lib/stubs/sigaction.c \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
 	    router_options.c \
 	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
 	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
-	gcc $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
+	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
 	    -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) \
 	    -c -g -O0  -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
 	rm -f rte_table_acl.o
-	gcc -g -Wl,--no-as-needed -ldl -lm -o executable \
+	$(COMPILE_COMMAND) -g -Wl,--no-as-needed -ldl -lm -o executable \
 	        nf_main.o router.o router_options.o nf_util.o nat_config.o\
 	        hardware_stub.o \
 		dpdk_mempool_singleton.o \
@@ -495,17 +501,17 @@ executable-router-hardware:
 
 executable-firewall-hardware:
 	$(CLEAN_COMMAND)
-	gcc $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
+	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
 	    $(SELF_DIR)/lib/stubs/fcntl_open.c $(SELF_DIR)/lib/stubs/sigaction.c \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
 	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
 	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
-	gcc $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
+	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
 	    -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) \
 	    -c -g -O0  -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
 	rm -f rte_table_acl.o
-	gcc -g -Wl,--no-as-needed -ldl -lm -o executable \
+	$(COMPILE_COMMAND) -g -Wl,--no-as-needed -ldl -lm -o executable \
 		nf_main.o firewall.o nf_util.o nat_config.o\
 	        hardware_stub.o \
 		dpdk_mempool_singleton.o \
