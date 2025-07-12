@@ -4,6 +4,4 @@
 
 #include <stdint.h>
 
-typedef uint64_t rte_iova_t;
-
 #endif

@@ -48,7 +48,7 @@ __attribute__((noinline)) int dchain_allocate(int index_range,
     klee_assume(0 <= (*chain_out)->new_index);
     klee_assume((*chain_out)->new_index < index_range);
     (*chain_out)->dchain_out_of_space = klee_int("dchain_out_of_space");
-    TRACE_VAL((uint32_t)(*chain_out), "dchain", _u32)
+    TRACE_VAL((uint32_t)(uintptr_t)*chain_out, "dchain", _u32)
     DENY(*chain_out);
     return 1;
   } else {
@@ -61,9 +61,9 @@ dchain_allocate_new_index(struct DoubleChain *chain, int *index_out,
                           time_t time) {
   klee_trace_ret();
   /* To differentiate between different chains */
-  klee_trace_param_u64((uint64_t)chain, "chain");
+  klee_trace_param_u32((uint32_t)(uintptr_t)chain, "chain");
 
-  TRACE_VAL((uint32_t)chain, "dchain", _u32)
+  TRACE_VAL((uint32_t)(uintptr_t)chain, "dchain", _u32)
   ALLOW(chain);
   TRACE_VAR(chain->dchain_out_of_space, "dchain_out_of_space")
   if (chain->dchain_out_of_space) {
@@ -82,7 +82,7 @@ __attribute__((noinline)) int dchain_rejuvenate_index(struct DoubleChain *chain,
                                                       int index, time_t time) {
   klee_trace_ret();
   /* To differentiate between different chains */
-  klee_trace_param_u64((uint64_t)chain, "chain");
+  klee_trace_param_u32((uint32_t)(uintptr_t)chain, "chain");
 
   klee_assert(chain != NULL);
   ds_path_1();
@@ -94,7 +94,7 @@ __attribute__((noinline)) int dchain_expire_one_index(struct DoubleChain *chain,
                                                       time_t time) {
   klee_trace_ret();
   /* To differentiate between different chains */
-  klee_trace_param_u64((uint64_t)chain, "chain");
+  klee_trace_param_u32((uint32_t)(uintptr_t)chain, "chain");
 
   klee_assert(chain != NULL);
 
@@ -107,7 +107,7 @@ __attribute__((noinline)) int
 dchain_is_index_allocated(struct DoubleChain *chain, int index) {
   klee_trace_ret();
   /* To differentiate between different chains */
-  klee_trace_param_u64((uint64_t)chain, "chain");
+  klee_trace_param_u32((uint32_t)(uintptr_t)chain, "chain");
 
   klee_assert(chain != NULL);
   ds_path_1();
