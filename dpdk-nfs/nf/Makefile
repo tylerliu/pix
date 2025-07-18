@@ -323,7 +323,8 @@ executable-vignat-hardware:
 	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
 	    $(SELF_DIR)/lib/stubs/fcntl_open.c $(SELF_DIR)/lib/stubs/sigaction.c \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
-	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
+	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c
+	$(CPP_COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(CPP_EXEC_FLAGS) \
 	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
 	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
@@ -361,7 +362,8 @@ executable-bridge-hardware:
 	    $(SELF_DIR)/lib/stubs/fcntl_open.c \
 	    $(SELF_DIR)/lib/stubs/sigaction.c \
 	    $(SELF_DIR)/lib/stubs/hardware_stub.c \
-	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
+	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c
+	$(CPP_COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(CPP_EXEC_FLAGS) \
 	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
 	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
@@ -397,7 +399,8 @@ executable-vigbalancer-hardware:
 	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
 	    $(SELF_DIR)/lib/stubs/fcntl_open.c $(SELF_DIR)/lib/stubs/sigaction.c \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
-	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
+	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c
+	$(CPP_COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(CPP_EXEC_FLAGS) \
 	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
 	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
@@ -433,7 +436,8 @@ executable-vigbalancer-hardware:
 executable-lpm-hardware:
 	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
 	    $(SELF_DIR)/lib/stubs/fcntl_open.c $(SELF_DIR)/lib/stubs/sigaction.c \
-	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
+	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c
+	$(CPP_COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(CPP_EXEC_FLAGS) \
 	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
 	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
@@ -469,7 +473,8 @@ executable-router-hardware:
 	    $(SELF_DIR)/lib/stubs/fcntl_open.c $(SELF_DIR)/lib/stubs/sigaction.c \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
 	    router_options.c \
-	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
+	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c
+	$(CPP_COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(CPP_EXEC_FLAGS) \
 	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
 	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
@@ -504,7 +509,8 @@ executable-firewall-hardware:
 	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(VERIF_FILES) $(VERIF_DPDK_FILES) $(SELF_DIR)/lib/stubs/hardware_stub.c $(EXEC_FLAGS) \
 	    $(SELF_DIR)/lib/stubs/fcntl_open.c $(SELF_DIR)/lib/stubs/sigaction.c \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
-	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c \
+	   $(KLEE_ROOT)/runtime/Runtest/intrinsics.c
+	$(CPP_COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS) -DVIGOR_STUB_HARDWARE $(VERIF_INCLUDES) $(VERIF_DPDK_INCLUDES) $(CPP_EXEC_FLAGS) \
 	   $(KLEE_ROOT)/lib/Basic/KTest.cpp
 	$(COMPILE_COMMAND) $(VERIF_DEFS) $(VERIF_DPDK_DEFS)  \
 	    $(SELF_DIR)/lib/stubs/do_not_optimize_this_value_out.c \
@@ -571,7 +577,7 @@ measure:
 klee-last/%.tracelog: klee-last/%.ktest executable
 	@mkdir tmpdir_$*
 	@# HOME variable messes with the rte config file location, so better without it.
-	@cd tmpdir_$* && unset HOME && KTEST_FILE=../$< pin -t $(KLEE_ROOT)/trace-instructions/pin-trace.so -start_fn $(START_FN) -end_fn $(END_FN) -- ../executable --no-shconf --  $(NF_VERIF_ARGS) || true
+	cd tmpdir_$* && unset HOME && KTEST_FILE=../$< pin -t $(KLEE_ROOT)/trace-instructions/pin-trace.so -start_fn $(START_FN) -end_fn $(END_FN) -- ../executable --no-shconf --  $(NF_VERIF_ARGS)
 	@mv tmpdir_$*/trace.out $@
 	@rmdir tmpdir_$*
 
