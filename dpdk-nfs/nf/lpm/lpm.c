@@ -26,6 +26,7 @@ void nf_core_init(void) {
   assert(lpm);
 }
 
+__attribute__((noinline))
 int nf_core_process(struct rte_mbuf *mbuf, time_t now) {
   // VIGOR_TAG(TRAFFIC_CLASS, PACKET_RECEIVED);
   struct rte_ipv4_hdr *ip_header = nf_get_mbuf_ipv4_header(mbuf);
