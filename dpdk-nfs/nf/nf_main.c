@@ -49,6 +49,9 @@
 #define VIGOR_LOOP_END                                                         \
     stub_hardware_reset_receive(VIGOR_DEVICE);                                 \
     nf_loop_iteration_border(_vigor_lcore_id, VIGOR_NOW);                      \
+    if (klee_int("tired")) {                                                   \
+      exit(0);                                                                 \
+    }                                                                          \
   }
 #else // REPLAY
 #define VIGOR_LOOP_END                                                         \
