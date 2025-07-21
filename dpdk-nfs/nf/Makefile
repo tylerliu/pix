@@ -155,6 +155,10 @@ VERIF_FLAGS += $(NF_VERIF_FLAGS)
 # Klee-runtime executable compilation flags. Replay is unconditional here.
 EXEC_FLAGS := -c -g -O2 -std=c99 -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
 CPP_EXEC_FLAGS := -c -g -O2 -std=c++11 -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
+ifeq ($(LLVM),TRUE)
+	EXEC_FLAGS += -emit-llvm
+	CPP_EXEC_FLAGS += -emit-llvm
+endif
 # Basic includes: NF root and KLEE
 VERIF_INCLUDES := -I $(SELF_DIR) -I $(KLEE_INCLUDE)
 
@@ -174,11 +178,9 @@ VERIF_DEFS += $(NF_VERIF_DEFS)
 
 # Basic files
 # NF base
-VERIF_FILES := $(SELF_DIR)/nf_main.c $(SELF_DIR)/lib/nf_util.c
-# Specific NF
-VERIF_FILES += $(NF_FILES)
+VERIF_STUB_FILES := $(SELF_DIR)/nf_main.c $(SELF_DIR)/lib/nf_util.c
 # NF base stubs
-VERIF_FILES += ../lib/stubs/containers/map-stub.c \
+VERIF_STUB_FILES += ../lib/stubs/containers/map-stub.c \
                ../lib/stubs/containers/double-map-stub.c \
                ../lib/stubs/containers/double-chain-stub.c \
                ../lib/stubs/containers/vector-stub.c \
@@ -186,29 +188,33 @@ VERIF_FILES += ../lib/stubs/containers/map-stub.c \
                ../lib/stubs/containers/traced-variables-stub.c \
 							 ../router/router_options_stub.c \
                ../lpm/lpm_stub.c
-VERIF_FILES += ../lib/stubs/dpdk/dpdk_stubs.c
-VERIF_FILES += ../lib/stubs/dpdk/rte_ethdev.c
+VERIF_STUB_FILES += ../lib/stubs/dpdk/dpdk_stubs.c
+VERIF_STUB_FILES += ../lib/stubs/dpdk/rte_ethdev.c
 
-# Specific NF stubs
-VERIF_FILES += $(NF_VERIF_FILES)
 # Environment stubs
-VERIF_FILES += ../lib/stubs/externals/*.c ../lib/stubs/core_stub.c ../lib/stubs/time_stub.c
+VERIF_STUB_FILES += ../lib/stubs/externals/*.c ../lib/stubs/core_stub.c ../lib/stubs/time_stub.c
 # DPDK cmdline parsing library, always included, we don't want/need to stub it
 # Exclude Windows-specific files
-VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline.c
-VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_cirbuf.c
-VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse.c
-VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_etheraddr.c
-VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_ipaddr.c
-VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_num.c
-VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_portlist.c
-VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_string.c
-VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_rdline.c
-VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_socket.c
-VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_vt100.c
-VERIF_FILES += $(RTE_SDK)/lib/cmdline/cmdline_os_unix.c
+VERIF_STUB_FILES += $(RTE_SDK)/lib/cmdline/cmdline.c
+VERIF_STUB_FILES += $(RTE_SDK)/lib/cmdline/cmdline_cirbuf.c
+VERIF_STUB_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse.c
+VERIF_STUB_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_etheraddr.c
+VERIF_STUB_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_ipaddr.c
+VERIF_STUB_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_num.c
+VERIF_STUB_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_portlist.c
+VERIF_STUB_FILES += $(RTE_SDK)/lib/cmdline/cmdline_parse_string.c
+VERIF_STUB_FILES += $(RTE_SDK)/lib/cmdline/cmdline_rdline.c
+VERIF_STUB_FILES += $(RTE_SDK)/lib/cmdline/cmdline_socket.c
+VERIF_STUB_FILES += $(RTE_SDK)/lib/cmdline/cmdline_vt100.c
+VERIF_STUB_FILES += $(RTE_SDK)/lib/cmdline/cmdline_os_unix.c
 # ...and the string function it uses
-VERIF_FILES += $(RTE_SDK)/lib/eal/common/eal_common_string_fns.c
+VERIF_STUB_FILES += $(RTE_SDK)/lib/eal/common/eal_common_string_fns.c
+
+
+# Specific NF and its specific stub files
+VERIF_NF_FILES := $(NF_FILES) $(NF_VERIF_FILES)
+
+VERIF_FILES := $(VERIF_NF_FILES) $(VERIF_STUB_FILES)
 
 # Defines for DPDK
 # CPUFLAGS is set to a sentinel value; usually it's passed from the DPDK build system
@@ -279,7 +285,8 @@ verify-dpdk:
 	@echo "DEBUG: DPDK_MESON_BUILD = $(DPDK_MESON_BUILD)"
 	@echo "DEBUG: VERIF_FILES = $(VERIF_FILES)"
 	@echo "DEBUG: VERIF_INCLUDES = $(VERIF_INCLUDES)"
-	$(COMPILE_COMMAND) $(VERIF_DEFS) -DVIGOR_STUB_DPDK $(VERIF_INCLUDES) -I $(SELF_DIR)/lib/stubs/dpdk $(VERIF_FILES) $(VERIF_FLAGS)
+	$(COMPILE_COMMAND) $(VERIF_DEFS) -DVIGOR_STUB_DPDK $(VERIF_INCLUDES) -I $(SELF_DIR)/lib/stubs/dpdk $(VERIF_STUB_FILES) $(VERIF_FLAGS)
+	$(COMPILE_COMMAND) $(VERIF_DEFS) -DVIGOR_STUB_DPDK $(VERIF_INCLUDES) -I $(SELF_DIR)/lib/stubs/dpdk $(VERIF_NF_FILES) $(VERIF_FLAGS)
 	$(LINK_COMMAND)
 	$(VERIF_COMMAND) $(NF_VERIF_BASE_ARGS) $(NF_VERIF_ARGS)
 	$(CLEAN_COMMAND)
@@ -307,7 +314,11 @@ executable-vignat executable-bridge executable-vigbalancer executable-lpm execut
     		$(KLEE_ROOT)/runtime/Runtest/intrinsics.c
 	$(CPP_COMPILE_COMMAND) $(VERIF_DEFS) -DVIGOR_STUB_DPDK -I $(KLEE_INCLUDE) \
 			$(CPP_EXEC_FLAGS) $(NF_VERIF_FLAGS) $(KLEE_ROOT)/lib/Basic/KTest.cpp
+ifeq ($(LLVM),TRUE)
+	llvm-link -o replayable.bc *.bc
+else
 	$(COMPILE_COMMAND) -o executable $(NF_EXECUTABLE_OBJ_FILES) $(EXECUTABLE_OBJ_FILES)
+endif
 
 executable-click:
 	$(CLEAN_COMMAND)
@@ -581,13 +592,24 @@ klee-last/%.tracelog: klee-last/%.ktest executable
 	@mv tmpdir_$*/trace.out $@
 	@rmdir tmpdir_$*
 
+replayable-tracing.bc: replayable.bc
+    # generate with dynamic count
+
+klee-last/%.ll.tracelog: klee-last/%.ktest replayable-tracing.bc
+	@mkdir tmpdir_$*
+	@# HOME variable messes with the rte config file location, so better without it.
+	cd tmpdir_$* && unset HOME && KTEST_FILE=../$< lli ../replayable.bc --no-shconf -- $(NF_VERIF_ARGS)
+	@mv tmpdir_$*/trace.out $@
+	@rmdir tmpdir_$*
+
 KTESTS=$(shell find klee-last/ -name *.ktest)
 INSTR_TRACES=$(KTESTS:%.ktest=%.tracelog)
-
-.PHONY: instr-traces
+INSTR_TRACES_LLVM=$(KTESTS:%.ktest=%.ll.tracelog)
+.PHONY: instr-traces llvm-instr-traces
 
 # run "make -j 40 instr-traces" to exercise this rule in parallel
 instr-traces: $(INSTR_TRACES)
+llvm-instr-traces: $(INSTR_TRACES_LLVM)
 
 perf-descriptions:
-	@bash $(KLEE_ROOT)/scripts/tree-gen/build_trees.sh -m $(MAX_PERF) -n $(MIN_PERF)
+	@bash $(KLEE_ROOT)/scripts/tree-gen/build_trees.sh -m $(MAX_PERF) -n $(MIN_PERF) -e $(METRICS)

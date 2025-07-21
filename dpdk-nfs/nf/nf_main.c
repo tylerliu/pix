@@ -25,21 +25,19 @@
 #define VIGOR_LOOP_BEGIN                                                       \
   unsigned _vigor_lcore_id = rte_lcore_id();                                   \
   time_t _vigor_start_time = start_time();                                     \
-  int _vigor_loop_termination = klee_range(0, 2, "loop_termination");                  \
+  int _vigor_loop_termination = klee_range(0, 2, "loop_termination");          \
   unsigned VIGOR_DEVICES_COUNT;                                                \
-  klee_possibly_havoc(&VIGOR_DEVICES_COUNT, sizeof(VIGOR_DEVICES_COUNT),       \
-                      "VIGOR_DEVICES_COUNT");                                  \
+  VIGOR_DEVICES_COUNT = rte_eth_dev_count_avail();                             \
   time_t VIGOR_NOW;                                                            \
   klee_possibly_havoc(&VIGOR_NOW, sizeof(VIGOR_NOW), "VIGOR_NOW");             \
   unsigned VIGOR_DEVICE;                                                       \
   klee_possibly_havoc(&VIGOR_DEVICE, sizeof(VIGOR_DEVICE), "VIGOR_DEVICE");    \
   unsigned _d;                                                                 \
   klee_possibly_havoc(&_d, sizeof(_d), "_d");                                  \
-  while (klee_induce_invariants() && _vigor_loop_termination) {                 \
+  while (klee_induce_invariants() && _vigor_loop_termination) {                \
     nf_loop_iteration_border(_vigor_lcore_id, _vigor_start_time);              \
     VIGOR_NOW = current_time();                                                \
     /* concretize the device to avoid leaking symbols into DPDK */             \
-    VIGOR_DEVICES_COUNT = rte_eth_dev_count_avail();                           \
     VIGOR_DEVICE = klee_range(0, VIGOR_DEVICES_COUNT, "VIGOR_DEVICE");         \
     for (_d = 0; _d < VIGOR_DEVICES_COUNT; _d++)                               \
       if (VIGOR_DEVICE == _d) {                                                \
@@ -49,16 +47,13 @@
     stub_hardware_receive_packet(VIGOR_DEVICE);
 #ifdef REPLAY
 #define VIGOR_LOOP_END                                                         \
-  stub_hardware_reset_receive(VIGOR_DEVICE);                                   \
-  nf_loop_iteration_border(_vigor_lcore_id, VIGOR_NOW);                        \
-  if (klee_int("tired")) {                                                     \
-    exit(0);                                                                   \
-  }                                                                            \
+    stub_hardware_reset_receive(VIGOR_DEVICE);                                 \
+    nf_loop_iteration_border(_vigor_lcore_id, VIGOR_NOW);                      \
   }
 #else // REPLAY
 #define VIGOR_LOOP_END                                                         \
-  stub_hardware_reset_receive(VIGOR_DEVICE);                                   \
-  nf_loop_iteration_border(_vigor_lcore_id, VIGOR_NOW);                        \
+    stub_hardware_reset_receive(VIGOR_DEVICE);                                 \
+    nf_loop_iteration_border(_vigor_lcore_id, VIGOR_NOW);                      \
   }
 #endif // REPLAY
 #else  // KLEE_VERIFICATION

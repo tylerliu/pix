@@ -23,8 +23,13 @@ export END_FN="nf_core_process"
 
 if [ "$TEST" == "all" ]; then 
 	make verify-dpdk
-	make executable-$NF
-	make -j $(nproc) instr-traces
+  if [ "$METRICS" != "llvm" ]; then
+	  make executable-$NF
+    make -j $(nproc) instr-traces
+  else
+    make executable-$NF LLVM=TRUE
+    make llvm-instr-traces
+  fi
 fi
 
 pushd ../../perf-contracts
@@ -41,4 +46,5 @@ pushd klee-last
 popd
 
 export MAX_PERF=1000 && export MIN_PERF=100
-make perf-descriptions
+make perf-descriptions METRICS=$METRICS
+
