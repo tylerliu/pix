@@ -7,7 +7,7 @@
 int Num_bucket_traversals;
 int Num_hash_collisions;
 int recent_flow;
-char *prefix; /* For tracing */
+static char *prefix; /* For tracing */
 
 void dmap_set_entry_condition(struct DoubleMap *map, entry_condition *c) {
   ALLOW(map);

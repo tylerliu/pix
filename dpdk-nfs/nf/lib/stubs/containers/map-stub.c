@@ -3,7 +3,7 @@
 #include "map-stub-control.h"
 #include <stdlib.h>
 
-char *prefix; /* For tracing */
+static char *prefix; /* For tracing */
 
 /* For tracing map_key_cached */
 char *base_key_cached = "map_key_cached";

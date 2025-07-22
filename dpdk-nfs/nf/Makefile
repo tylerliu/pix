@@ -266,7 +266,7 @@ EXECUTABLE_OBJ_FILES += KTest.o
 
 # Commands
 # Cleanup
-CLEAN_COMMAND := rm -f *.bc executable *.o
+CLEAN_COMMAND := rm -f *.bc executable *.o replayable.bc replayable-tracing.bc
 # Compilation
 COMPILE_COMMAND := clang
 CPP_COMPILE_COMMAND := clang++
@@ -594,18 +594,22 @@ klee-last/%.tracelog: klee-last/%.ktest executable
 
 replayable-tracing.bc: replayable.bc
     # generate with dynamic count
+	opt -load $(KLEE_ROOT)/trace-ir-instrs/build/libTraceIRInstrs.so -trace-ir-instrs -trace-ir-start=$(START_FN) -trace-ir-end=$(END_FN) < replayable.bc > $@
 
-klee-last/%.ll.tracelog: klee-last/%.ktest replayable-tracing.bc
+replayable-tracing: replayable-tracing.bc
+	$(COMPILE_COMMAND) replayable-tracing.bc $(KLEE_ROOT)/trace-ir-instrs/build/libTraceRuntime.a -ldl -o $@
+
+klee-last/%.ll.tracelog: klee-last/%.ktest replayable-tracing
 	@mkdir tmpdir_$*
 	@# HOME variable messes with the rte config file location, so better without it.
-	cd tmpdir_$* && unset HOME && KTEST_FILE=../$< lli ../replayable.bc --no-shconf -- $(NF_VERIF_ARGS)
+	cd tmpdir_$* && unset HOME && KTEST_FILE=../$< ../replayable-tracing --no-shconf -- $(NF_VERIF_ARGS)
 	@mv tmpdir_$*/trace.out $@
 	@rmdir tmpdir_$*
 
 KTESTS=$(shell find klee-last/ -name *.ktest)
 INSTR_TRACES=$(KTESTS:%.ktest=%.tracelog)
 INSTR_TRACES_LLVM=$(KTESTS:%.ktest=%.ll.tracelog)
-.PHONY: instr-traces llvm-instr-traces
+.PHONY: instr-traces llvm-instr-traces clean
 
 # run "make -j 40 instr-traces" to exercise this rule in parallel
 instr-traces: $(INSTR_TRACES)
@@ -613,3 +617,6 @@ llvm-instr-traces: $(INSTR_TRACES_LLVM)
 
 perf-descriptions:
 	@bash $(KLEE_ROOT)/scripts/tree-gen/build_trees.sh -m $(MAX_PERF) -n $(MIN_PERF) -e $(METRICS)
+
+clean:
+	$(CLEAN_COMMAND)

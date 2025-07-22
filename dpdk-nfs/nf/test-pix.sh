@@ -28,7 +28,7 @@ if [ "$TEST" == "all" ]; then
     make -j $(nproc) instr-traces
   else
     make executable-$NF LLVM=TRUE
-    make llvm-instr-traces
+    make -j $(nproc) llvm-instr-traces
   fi
 fi
 
