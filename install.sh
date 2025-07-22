@@ -19,7 +19,7 @@ CORES_COUNT=$(nproc)
 DPDK_RELEASE='22.11.8'
 KLEE_RELEASE='master'
 KLEE_UCLIBC_RELEASE='klee_uclibc_v1.4'
-LLVM_RELEASE=10.0.1
+LLVM_RELEASE=11.1.0
 PIN_RELEASE='3.28-98749-g6643ecee5'
 Z3_RELEASE='z3-4.13.4'
 OCAML_RELEASE='4.14.2'
@@ -324,7 +324,8 @@ source_install_llvm()
 			CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0" \
 			cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_USE_LINKER=gold -DLLVM_ENABLE_DUMP=ON \
 			-DZ3_INCLUDE_DIR="$BUILDDIR/z3/build/include" \
-			-DZ3_LIBRARIES="$BUILDDIR/z3/build/lib/libz3.so" ../
+			-DZ3_LIBRARIES="$BUILDDIR/z3/build/lib/libz3.so" \
+			../
 		make -j $CORES_COUNT || make
 	fi
 }

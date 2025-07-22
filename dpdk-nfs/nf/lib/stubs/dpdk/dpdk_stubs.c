@@ -10,6 +10,9 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <rte_errno.h>
+
+int rte_errno;
 
 // Define STUB_DPDK_DEVICES_COUNT if not already defined
 #ifndef STUB_DPDK_DEVICES_COUNT
@@ -84,7 +87,7 @@ struct rte_mempool *rte_pktmbuf_pool_create(const char *name, unsigned n,
 }
 
 const char *rte_strerror(int errnum) {
-    return "Unknown error";
+    return "stub error";
 }
 
 // Additional missing functions

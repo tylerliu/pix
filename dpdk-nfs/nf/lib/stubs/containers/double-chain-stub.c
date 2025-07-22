@@ -18,7 +18,7 @@ struct DoubleChain {
   int new_index;
 };
 
-char *prefix; /* For tracing */
+static char *prefix; /* For tracing */
 
 void dchain_set_id(struct DoubleChain *chain, char *id, char *data_type) {
   ALLOW(chain);

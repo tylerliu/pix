@@ -4,7 +4,7 @@
 #include "lib/stubs/containers/map-stub-control.h"
 #include <klee/klee.h>
 
-char *prefix; /* For tracing */
+static char *prefix; /* For tracing */
 int expire_items(struct DoubleChain *chain, struct DoubleMap *map,
                  time_t time) {
   ALLOW(map);

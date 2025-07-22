@@ -61,12 +61,6 @@ stub_strerror(int errnum)
 	return "<fake error description>";
 }
 
-//const char *
-//rte_strerror(int errnum)
-//{
-//	return stub_str_error(errnum);
-//}
-
 void
 stub_abort(void)
 {

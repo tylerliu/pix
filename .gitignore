@@ -35,6 +35,9 @@ nf/pin/counts.so
 *.eps
 *.png
 executable
+replayable.bc
+replayable-tracing.bc
+replayable-tracing
 *.ll
 res-tree*
 neg-tree*
