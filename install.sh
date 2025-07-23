@@ -275,8 +275,8 @@ source_install_z3()
 	fi
 
 	if  [ ! -f "build/z3" ] || [ ! "z3-$(build/z3 --version | cut -f3 -d' ')" = "$Z3_RELEASE" ];	then
-		python scripts/mk_make.py -p "$BUILDDIR/z3/build"
-		cd build
+		mkdir build && cd build
+		cmake ..
 		make -kj $CORES_COUNT || make
 		make install
 	fi
