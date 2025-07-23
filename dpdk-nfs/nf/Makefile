@@ -153,8 +153,8 @@ VERIF_FLAGS := -c -g -emit-llvm -fsanitize=signed-integer-overflow $(REPLAY) -DN
 VERIF_FLAGS += $(NF_VERIF_FLAGS)
 
 # Klee-runtime executable compilation flags. Replay is unconditional here.
-EXEC_FLAGS := -c -g -O2 -std=c99 -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
-CPP_EXEC_FLAGS := -c -g -O2 -std=c++11 -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
+EXEC_FLAGS := -c -O2 -std=c99 -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
+CPP_EXEC_FLAGS := -c -O2 -std=c++11 -DREPLAY -DNO_STATIC_MAPPING -DVIGOR_EXECUTABLE
 ifeq ($(LLVM),TRUE)
 	EXEC_FLAGS += -emit-llvm
 	CPP_EXEC_FLAGS += -emit-llvm
