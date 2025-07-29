@@ -39,6 +39,7 @@ replayable.bc
 replayable-tracing.bc
 replayable-tracing
 *.ll
+!ir-perf/snippets/*/*.ll
 res-tree*
 neg-tree*
 *.os

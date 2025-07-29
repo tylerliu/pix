@@ -1,0 +1,1 @@
+%new_agg = insertvalue %struct.MyStruct %agg_val, i32 42, 0 

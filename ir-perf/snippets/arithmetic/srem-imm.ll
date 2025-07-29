@@ -1,0 +1,1 @@
+%next_op1 = srem i64 %op1, 42 

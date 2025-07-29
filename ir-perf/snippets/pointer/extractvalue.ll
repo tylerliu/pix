@@ -1,0 +1,1 @@
+%field = extractvalue %struct.MyStruct %agg_val, 0 

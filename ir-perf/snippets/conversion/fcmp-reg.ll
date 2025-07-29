@@ -1,0 +1,1 @@
+%next_acc = fcmp olt double %acc, %acc 

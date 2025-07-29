@@ -1,0 +1,1 @@
+%next_acc = fdiv double %acc, %acc 

@@ -1,0 +1,1 @@
+%next_acc = fadd double %acc, 1.5 

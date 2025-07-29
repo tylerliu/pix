@@ -1,0 +1,1 @@
+%next_val = phi i64 [%val, %loop], [42, %entry] 

@@ -1,0 +1,1 @@
+%next_acc = fneg double %acc 

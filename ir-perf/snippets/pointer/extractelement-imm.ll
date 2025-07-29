@@ -1,0 +1,1 @@
+%elem = extractelement <4 x i32> %vec_val, i32 0 

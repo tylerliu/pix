@@ -1,0 +1,1 @@
+%next_op1 = icmp slt i64 %i, 42 

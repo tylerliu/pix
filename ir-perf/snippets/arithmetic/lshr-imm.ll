@@ -1,0 +1,1 @@
+%next_op1 = lshr i64 %op1, 5 

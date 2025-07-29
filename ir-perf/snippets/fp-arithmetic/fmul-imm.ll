@@ -1,0 +1,1 @@
+%next_acc = fmul double %acc, 1.5 

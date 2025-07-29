@@ -1,0 +1,1 @@
+%new_vec = insertelement <4 x i32> %vec_val, i32 42, i32 0 

@@ -1,0 +1,1 @@
+%next_op1 = sub i64 %op1, %op1 

@@ -1,0 +1,1 @@
+%ptr = getelementptr [10 x i64], [10 x i64]* %base_ptr, i64 0, i64 %iv 

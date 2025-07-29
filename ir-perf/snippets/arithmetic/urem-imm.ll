@@ -1,0 +1,1 @@
+%next_op1 = urem i64 %op1, 42 
