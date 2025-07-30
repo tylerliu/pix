@@ -1,2 +1,15 @@
-%conv_result = trunc i64 %i to i32
-%next_acc = sitofp i32 %conv_result to double 
+%input = phi i64 [42, %entry], [%next_input, %loop]
+%temp1 = add i64 %input, 1
+%temp2 = add i64 %temp1, 1
+%temp3 = add i64 %temp2, 1
+%result = trunc i64 %input to i32
+%result_ext = zext i32 %result to i64
+%result2_ext = zext i32 %result to i64
+%result3_ext = zext i32 %result to i64
+%result4_ext = zext i32 %result to i64
+%sum1 = add i64 %sum, %result_ext
+%sum2 = add i64 %sum1, %result2_ext
+%sum3 = add i64 %sum2, %result3_ext
+%next_sum = add i64 %sum3, %result4_ext
+%diff = sub i64 %temp2, %temp1
+%next_input = add i64 %temp3, %diff 

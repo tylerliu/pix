@@ -31,6 +31,10 @@ template_configs = {
     "conversion": {
         "function": "bench_conversion",
         "template_file": "templates/conversion.ll"
+    },
+    "control": {
+        "function": "bench_control",
+        "template_file": "templates/control.ll"
     }
 }
 

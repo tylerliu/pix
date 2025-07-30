@@ -1,2 +1,11 @@
-%conv_result = sext i32 %op to i64
-%next_acc = sitofp i64 %conv_result to double 
+%input = phi i32 [42, %entry], [%next_input, %loop]
+%temp1 = add i32 %input, 1
+%temp2 = add i32 %temp1, 1
+%temp3 = add i32 %temp2, 1
+%result = sext i32 %input to i64
+%sum1 = add i64 %sum, %result
+%sum2 = add i64 %sum1, %result
+%sum3 = add i64 %sum2, %result
+%next_sum = add i64 %sum3, %result
+%diff = sub i32 %temp2, %temp1
+%next_input = add i32 %temp3, %diff 

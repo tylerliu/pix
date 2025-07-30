@@ -1,2 +1,11 @@
-%conv_result = bitcast i64 %i to double
-%next_acc = fadd double %conv_result, 0.0 
+%input = phi double [3.5, %entry], [%next_input, %loop]
+%temp1 = fadd double %input, 1.0
+%temp2 = fadd double %temp1, 1.0
+%temp3 = fadd double %temp2, 1.0
+%result1 = bitcast double %input to i64
+%sum1 = add i64 %sum, %result1
+%sum2 = add i64 %sum1, %result1
+%sum3 = add i64 %sum2, %result1
+%next_sum = add i64 %sum3, %result1
+%diff = fsub double %temp2, %temp1
+%next_input = fadd double %temp3, %diff 

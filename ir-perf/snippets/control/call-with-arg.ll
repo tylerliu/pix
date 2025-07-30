@@ -1,0 +1,1 @@
+call void @dummy_function_with_arg(i32 42) 

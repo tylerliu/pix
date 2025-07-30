@@ -1,2 +1,15 @@
-%conv_result = fpext float %acc2 to double
-%next_acc = fadd double %conv_result, 0.0 
+%input = phi float [3.5, %entry], [%next_input, %loop]
+%temp1 = fadd float %input, 1.0
+%temp2 = fadd float %temp1, 1.0
+%temp3 = fadd float %temp2, 1.0
+%result1 = fpext float %input to double
+%result1_int = fptosi double %result1 to i64
+%result2_int = fptosi double %result1 to i64
+%result3_int = fptosi double %result1 to i64
+%result4_int = fptosi double %result1 to i64
+%sum1 = add i64 %sum, %result1_int
+%sum2 = add i64 %sum1, %result2_int
+%sum3 = add i64 %sum2, %result3_int
+%next_sum = add i64 %sum3, %result4_int
+%diff = fsub float %temp2, %temp1
+%next_input = fadd float %temp3, %diff 

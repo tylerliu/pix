@@ -1,1 +1,15 @@
-%next_acc = inttoptr i64 %i to i8* 
+%input = phi i64 [42, %entry], [%next_input, %loop]
+%temp1 = add i64 %input, 1
+%temp2 = add i64 %temp1, 1
+%temp3 = add i64 %temp2, 1
+%result1 = inttoptr i64 %input to i8*
+%result1_int = ptrtoint i8* %result1 to i64
+%result2_int = ptrtoint i8* %result1 to i64
+%result3_int = ptrtoint i8* %result1 to i64
+%result4_int = ptrtoint i8* %result1 to i64
+%sum1 = add i64 %sum, %result1_int
+%sum2 = add i64 %sum1, %result2_int
+%sum3 = add i64 %sum2, %result3_int
+%next_sum = add i64 %sum3, %result4_int
+%diff = sub i64 %temp2, %temp1
+%next_input = add i64 %temp3, %diff 
