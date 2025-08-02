@@ -37,7 +37,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie")
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 # Define template types
-set(TEMPLATE_TYPES arithmetic memory phi pointer fp-arithmetic conversion control alloca)
+set(TEMPLATE_TYPES arithmetic memory pointer fp-arithmetic conversion branching call alloca)
 
 foreach(TEMPLATE_TYPE ${TEMPLATE_TYPES})
     # Find all snippet files for this template type

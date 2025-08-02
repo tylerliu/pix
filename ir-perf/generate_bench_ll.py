@@ -9,35 +9,30 @@ output = sys.argv[4]
 # Map template types to function names and template files
 template_configs = {
     "arithmetic": {
-        "function": "bench_arithmetic",
         "template_file": "templates/arithmetic.ll"
     },
     "memory": {
-        "function": "bench_memory", 
         "template_file": "templates/memory.ll"
     },
     "phi": {
-        "function": "bench_phi",
         "template_file": "templates/phi.ll"
     },
     "pointer": {
-        "function": "bench_pointer",
         "template_file": "templates/pointer.ll"
     },
     "fp-arithmetic": {
-        "function": "bench_fp_arithmetic",
         "template_file": "templates/fp-arithmetic.ll"
     },
     "conversion": {
-        "function": "bench_conversion",
         "template_file": "templates/conversion.ll"
     },
-    "control": {
-        "function": "bench_control",
-        "template_file": "templates/control.ll"
+    "branching": {
+        "template_file": "templates/branching.ll"
+    },
+    "call": {
+        "template_file": "templates/call.ll"
     },
     "alloca": {
-        "function": "bench_alloca",
         "template_file": "templates/alloca.ll"
     }
 }

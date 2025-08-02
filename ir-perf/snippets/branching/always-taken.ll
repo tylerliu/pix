@@ -5,14 +5,15 @@
 br i1 %cond1, label %taken1, label %not_taken1
 
 taken1:
-  %temp1 = add i64 %op1, 1
+  %temp1_t = add i64 %op1, 1
   br label %merge
 
 not_taken1:
-  %temp1 = add i64 %op1, 5
+  %temp1_nt = add i64 %op1, 5
   br label %merge
 
 merge:
+  %temp1 = phi i64 [%temp1_t, %taken1], [%temp1_nt, %not_taken1]
   %temp2 = add i64 %temp1, 6
   %temp3 = add i64 %temp2, 7
   %temp4 = add i64 %temp3, 8
