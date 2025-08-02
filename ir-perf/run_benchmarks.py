@@ -247,28 +247,13 @@ class BenchmarkRunner:
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
             return False
     
-    def warn_perf_permissions(self):
-        """Warn about perf permission issues."""
-        if not self.check_perf_permissions():
-            print("⚠ Warning: perf may require elevated permissions")
-            print("   Try one of these solutions:")
-            print("   1. Run with sudo: sudo python3 run_benchmarks.py")
-            print("   2. Lower perf paranoid level: sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'")
-            print("   3. Add user to perf group: sudo usermod -a -G perf $USER")
-            print("   Note: Using sudo may affect measurement accuracy")
-            return False
-        return True
+
     
     def run_perf_measurement(self, executable):
         """Run perf stat measurement on the executable."""
         if self.verbose:
             print(f"Measuring {executable}...")
         executable_path = self.build_dir / executable
-        
-        # Check perf permissions first
-        if not self.warn_perf_permissions():
-            if self.verbose:
-                print("   Continuing anyway, but measurements may fail...")
         
         try:
             result = subprocess.run([
@@ -281,6 +266,12 @@ class BenchmarkRunner:
                 print(f"✗ Perf measurement failed: {e}")
                 print(f"Command: {' '.join(e.cmd)}")
                 print(f"Error output: {e.stderr}")
+            else:
+                # Provide helpful error message even in non-verbose mode
+                if "Permission denied" in str(e.stderr) or "Operation not permitted" in str(e.stderr):
+                    print(" ✗ (permission denied - try running with sudo)")
+                else:
+                    print(" ✗")
             return None
     
     def parse_perf_output(self, output):
@@ -331,11 +322,15 @@ class BenchmarkRunner:
         
         print(f"Found {len(benchmarks)} benchmarks")
         
+        # Check permissions once at the beginning
+        check_permissions()
+        
         # Group benchmarks by instruction type
         benchmark_groups = self.group_benchmarks(benchmarks)
         
         all_results = []
         latency_results = []
+        failed_benchmarks = []
         
         for group_name, group_benchmarks in benchmark_groups.items():
             print(f"\n{'='*50}")
@@ -354,6 +349,7 @@ class BenchmarkRunner:
                 if not self.warm_up(benchmark):
                     if not self.verbose:
                         print(" ✗")
+                    failed_benchmarks.append(benchmark)
                     continue
                 
                 # Measure
@@ -373,6 +369,10 @@ class BenchmarkRunner:
                         print(f"  Cycles/instruction: {result['cycles_per_inst']:.3f}")
                     else:
                         print(" ✓")
+                else:
+                    if not self.verbose:
+                        print(" ✗")
+                    failed_benchmarks.append(benchmark)
             
             # Calculate latency for this group
             if len(group_results) >= 2:
@@ -384,6 +384,10 @@ class BenchmarkRunner:
         
         # Print summary
         self.print_summary(latency_results)
+        
+        # Print failure summary
+        if failed_benchmarks:
+            self.print_failure_summary(failed_benchmarks)
         
         # Save detailed results to CSV
         if all_results:
@@ -492,6 +496,26 @@ class BenchmarkRunner:
         print(f"\nNote: Latency is calculated as the difference in cycles/instruction")
         print(f"between different numbers of the same instruction.")
     
+    def print_failure_summary(self, failed_benchmarks):
+        """Print a summary of failed benchmarks."""
+        print(f"\n{'='*80}")
+        print("FAILED BENCHMARKS SUMMARY")
+        print(f"{'='*80}")
+        print(f"Total failed benchmarks: {len(failed_benchmarks)}")
+        print()
+        
+        if failed_benchmarks:
+            print("Failed benchmarks:")
+            for benchmark in failed_benchmarks:
+                print(f"  - {benchmark}")
+            print()
+            print("Possible causes:")
+            print("  - Missing executable files")
+            print("  - Permission issues (try running with sudo)")
+            print("  - Insufficient CPU isolation")
+            print("  - Hardware performance counter access denied")
+            print("  - Benchmark executable crashed or timed out")
+    
     def save_results_to_csv(self, all_results):
         """Save all benchmark results to a CSV file."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -515,25 +539,31 @@ class BenchmarkRunner:
         print(f"\n✓ Results saved to {csv_filename}")
         return csv_filename
 
-def check_sudo_usage():
-    """Check if script is running with sudo and warn about it."""
+def check_permissions():
+    """Check if script has proper permissions for accurate measurements."""
     if os.geteuid() == 0:  # Running as root
-        print("⚠ Warning: Script is running with sudo/root privileges")
-        print("   This may affect measurement accuracy and is generally not recommended")
-        print("   Consider using one of these alternatives instead:")
-        print("   1. Lower perf paranoid level: sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'")
-        print("   2. Add user to perf group: sudo usermod -a -G perf $USER")
-        print("   3. Use perf with user events only (may be less accurate)")
+        print("✓ Script is running with sudo privileges")
+        print("   This is recommended for accurate CPU performance measurements")
+        print("   as it allows access to hardware performance counters")
         print()
         return True
-    return False
+    else:
+        print("⚠ Warning: Script is not running with sudo privileges")
+        print("   Without sudo, hardware performance counters are not accessible")
+        print("   Solutions:")
+        print("   1. Run with sudo: sudo python3 run_benchmarks.py (recommended)")
+        print("   2. Lower perf paranoid level: sudo sh -c 'echo -1 > /proc/sys/kernel/perf_event_paranoid'")
+        print("   3. Add user to perf group: sudo usermod -a -G perf $USER")
+        print("   Note: Measurements will likely fail without proper permissions")
+        print()
+        return False
 
 def main():
     """Main function."""
     import sys
     
-    # Check for sudo usage
-    check_sudo_usage()
+    # Check for proper permissions
+    check_permissions()
     
     # Parse command line arguments
     cpu_core = 3

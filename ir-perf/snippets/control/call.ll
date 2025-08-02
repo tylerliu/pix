@@ -1,1 +1,0 @@
-call void @dummy_function() 

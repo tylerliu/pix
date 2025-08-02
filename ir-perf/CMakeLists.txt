@@ -24,46 +24,20 @@ if (NOT EXISTS "${LLVMLLC}")
   message(FATAL_ERROR "Cannot find IR compiler \"${LLVMLLC}\"")
 endif()
 
-################################################################################
-# Function for compiling bitcode
-################################################################################
-function(compile_bitcode_library library_name source_files compile_cc_flags compile_cxx_flags opt_suffix)
-    # Compile every source file
-    set(BC_FILES)
-    foreach(source_file ${source_files})
-        # Get filename without extension
-        get_filename_component(file_name_only "${source_file}" NAME_WE)
-        set(bc_file "${CMAKE_CURRENT_BINARY_DIR}/${file_name_only}${opt_suffix}.bc" )
-        get_filename_component(source_file_type "${source_file}" EXT)
-        if("${source_file_type}" STREQUAL ".cpp")
-            add_custom_command(
-                    OUTPUT ${bc_file}
-                    COMMAND ${LLVMCXX} -c "-emit-llvm" ${compile_cxx_flags} "${source_file}" -o ${bc_file}
-                    DEPENDS ${source_file}
-            )
-        else()
-            add_custom_command(
-                    OUTPUT ${bc_file}
-                    COMMAND ${LLVMCC} -c "-emit-llvm" ${compile_cc_flags} "${source_file}" -o ${bc_file}
-                    DEPENDS ${source_file}
-            )
-        endif()
+###############################################################################
+# Set LLVM compiler as the default
+###############################################################################
+set(CMAKE_C_COMPILER ${LLVMCC})
+set(CMAKE_CXX_COMPILER ${LLVMCXX})
 
-        list(APPEND BC_FILES ${bc_file})
-    endforeach()
-
-    # Add command to link them to an archive
-    add_custom_command(
-            OUTPUT ${library_name}
-            COMMAND ${LLVM_AR} rcs ${library_name} ${BC_FILES}
-            DEPENDS ${BC_FILES}
-    )
-endfunction(compile_bitcode_library)
+# Disable PIE to avoid relocation issues with large global arrays
+set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie")
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 # Define template types
-set(TEMPLATE_TYPES arithmetic memory phi pointer fp-arithmetic conversion)
+set(TEMPLATE_TYPES arithmetic memory phi pointer fp-arithmetic conversion control alloca)
 
 foreach(TEMPLATE_TYPE ${TEMPLATE_TYPES})
     # Find all snippet files for this template type

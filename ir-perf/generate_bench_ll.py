@@ -35,6 +35,10 @@ template_configs = {
     "control": {
         "function": "bench_control",
         "template_file": "templates/control.ll"
+    },
+    "alloca": {
+        "function": "bench_alloca",
+        "template_file": "templates/alloca.ll"
     }
 }
 

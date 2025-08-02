@@ -1,1 +1,0 @@
-call void @deep_call_stack(i32 20) 
