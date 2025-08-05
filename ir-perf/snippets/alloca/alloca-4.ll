@@ -2,10 +2,11 @@
 %ptr2 = alloca i64
 %ptr3 = alloca i64
 %ptr4 = alloca i64
-%ptr1_val = ptrtoint i64* %ptr1 to i64 
-%ptr2_val = ptrtoint i64* %ptr2 to i64 
-%ptr3_val = ptrtoint i64* %ptr3 to i64 
-%ptr4_val = ptrtoint i64* %ptr4 to i64 
+%ptr1_val = load i64, i64* %ptr1
+%ptr2_val = load i64, i64* %ptr2
+%ptr3_val = load i64, i64* %ptr3 
+%ptr4_val = load i64, i64* %ptr4 
+call void @dummy()
 %temp1 = xor i64 %op1, %ptr1_val
 %temp2 = xor i64 %temp1, %ptr2_val
 %temp3 = xor i64 %temp2, %ptr3_val

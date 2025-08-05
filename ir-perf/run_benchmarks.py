@@ -14,6 +14,7 @@ import atexit
 from pathlib import Path
 import decimal
 import csv
+import math
 from datetime import datetime
 
 class BenchmarkRunner:
@@ -25,6 +26,7 @@ class BenchmarkRunner:
         self.original_settings = {}
         self.setup_completed = False
         self.supported_commands = {}
+        self.teardown_completed = False
         
         # Register cleanup on exit
         atexit.register(self.teardown)
@@ -167,9 +169,10 @@ class BenchmarkRunner:
     
     def teardown(self):
         """Restore original CPU settings."""
-        if not self.setup_completed:
+        if not self.setup_completed or self.teardown_completed:
             return
         
+        self.teardown_completed = True
         print("\nRestoring CPU settings...")
         
         # Restore governor (only if frequency-set was supported)
@@ -236,6 +239,73 @@ class BenchmarkRunner:
             return False
         return True
     
+    def is_memory_benchmark(self, benchmark_name):
+        """Check if benchmark is memory-related."""
+        return benchmark_name.startswith('bench_memory_')
+    
+    def detect_system_architecture(self):
+        """Detect system architecture and return appropriate perf events."""
+        import platform
+        
+        arch = platform.machine().lower()
+        
+        if arch in ['x86_64', 'amd64']:
+            # x86_64 system events
+            return {
+                'basic_events': 'cycles,instructions,branch-misses',
+                'memory_events': 'cycles,instructions,branch-misses,cache-misses,cache-references,L1-dcache-load-misses,L1-dcache-loads,all_data_cache_accesses',
+                'memory_metrics': 'all_l1_data_cache_fills,all_l2_cache_accesses,all_l2_cache_hits,all_l2_cache_misses',
+                'arch': 'x86_64'
+            }
+        elif arch in ['aarch64', 'arm64']:
+            # ARM64 system events
+            return {
+                'basic_events': 'cpu_cycles,inst_retired,br_mis_pred',
+                'memory_events': 'cpu_cycles,inst_retired,br_mis_pred,l1d_cache,l1d_cache_refill,l2d_cache,l2d_cache_refill,l3d_cache,l3d_cache_refill,ll_cache_rd,ll_cache_miss_rd',
+                'memory_metrics': '',
+                'arch': 'arm64'
+            }
+        else:
+            # Fallback to basic events for unknown architecture
+            return {
+                'basic_events': 'cycles,instructions,branch-misses',
+                'memory_events': 'cycles,instructions,branch-misses',
+                'memory_metrics': '',
+                'arch': 'unknown'
+            }
+    
+    def linear_regression(self, x_values, y_values):
+        """Perform linear regression using standard library."""
+        if len(x_values) < 2:
+            return None, None, None
+        if len(y_values) != len(x_values):
+            raise ValueError("x_values and y_values must have the same length")
+        
+        n = len(x_values)
+        sum_x = sum(x_values)
+        sum_y = sum(y_values)
+        sum_xy = sum(x_values[i] * y_values[i] for i in range(n))
+        sum_x2 = sum(x * x for x in x_values)
+        
+        # Calculate slope and intercept
+        denominator = n * sum_x2 - sum_x * sum_x
+        if denominator == 0:
+            return None, None, None
+            
+        slope = (n * sum_xy - sum_x * sum_y) / denominator
+        intercept = (sum_y - slope * sum_x) / n
+        
+        # Calculate R²
+        y_mean = sum_y / n
+        y_pred = [slope * x + intercept for x in x_values]
+        
+        ss_res = sum((y_values[i] - y_pred[i]) ** 2 for i in range(n))
+        ss_tot = sum((y_values[i] - y_mean) ** 2 for i in range(n))
+        
+        r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+        
+        return slope, intercept, r_squared
+    
     def check_perf_permissions(self):
         """Check if perf works without sudo and warn if needed."""
         try:
@@ -255,12 +325,31 @@ class BenchmarkRunner:
             print(f"Measuring {executable}...")
         executable_path = self.build_dir / executable
         
+        # Detect system architecture and choose appropriate events
+        system_config = self.detect_system_architecture()
+        is_memory = self.is_memory_benchmark(executable)
+        
+        if is_memory:
+            perf_events = system_config['memory_events']
+            perf_metrics = system_config['memory_metrics']
+        else:
+            perf_events = system_config['basic_events']
+            perf_metrics = ""
+        
+        if self.verbose:
+            print(f"  Architecture: {system_config['arch']}")
+            print(f"  Perf events: {perf_events}")
+            if perf_metrics:
+                print(f"  Perf metrics: {perf_metrics}")
+        
         try:
-            result = subprocess.run([
-                "perf", "stat", "-e", "cycles,instructions,branch-misses",
-                "taskset", "-c", str(self.cpu_core), str(executable_path), str(self.iterations)
-            ], capture_output=True, text=True, check=True)
-            return self.parse_perf_output(result.stderr)
+            cmd = ["perf", "stat", "-e", perf_events]
+            if perf_metrics:
+                cmd.extend(["-M", perf_metrics])
+            cmd.extend(["taskset", "-c", str(self.cpu_core), str(executable_path), str(self.iterations)])
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            return self.parse_perf_output(result.stderr, is_memory)
         except subprocess.CalledProcessError as e:
             if self.verbose:
                 print(f"✗ Perf measurement failed: {e}")
@@ -274,32 +363,151 @@ class BenchmarkRunner:
                     print(" ✗")
             return None
     
-    def parse_perf_output(self, output):
+    def parse_perf_output(self, output, is_memory=False):
         """Parse perf stat output and extract metrics."""
         metrics = {}
+        system_config = self.detect_system_architecture()
         
-        # Parse cycles
-        cycles_match = re.search(r'(\d+(?:,\d+)*)\s+cycles', output)
-        if cycles_match:
-            cycles = int(cycles_match.group(1).replace(',', ''))
-            metrics['cycles'] = cycles
+        # Define parsing patterns for different metric types
+        parsing_patterns = {
+            # Basic metrics (always parsed)
+            'basic': {
+                'cycles': r'(\d+(?:,\d+)*)\s+(?:cycles|cpu_cycles)',
+                'instructions': r'(\d+(?:,\d+)*)\s+(?:instructions|inst_retired)',
+                'branch_misses': r'(\d+(?:,\d+)*)\s+(?:branch-misses|br_mis_pred)'
+            },
+            
+            # Memory metrics (only for memory benchmarks)
+            'memory': {
+                'l1_loads': r'(\d+(?:,\d+)*)\s+(?:L1-dcache-loads|l1d_cache)',
+                'l1_load_misses': r'(\d+(?:,\d+)*)\s+(?:L1-dcache-load-misses|l1d_cache_refill)',
+                'l1_stores': r'(\d+(?:,\d+)*)\s+L1-dcache-stores',
+                'all_data_cache_accesses': r'(\d+(?:,\d+)*)\s+all_data_cache_accesses',
+                'l3_accesses': r'(\d+(?:,\d+)*)\s+(?:l3_cache_accesses|l3d_cache)',
+                'l3_misses': r'(\d+(?:,\d+)*)\s+(?:l3_misses|l3d_cache_refill)',
+                'll_cache_rd': r'(\d+(?:,\d+)*)\s+ll_cache_rd',
+                'll_cache_miss_rd': r'(\d+(?:,\d+)*)\s+ll_cache_miss_rd'
+            },
+            
+            # Special metrics with different parsing logic
+            'special': {}
+        }
         
-        # Parse instructions
-        insts_match = re.search(r'(\d+(?:,\d+)*)\s+instructions', output)
-        if insts_match:
-            instructions = int(insts_match.group(1).replace(',', ''))
-            metrics['instructions'] = instructions
+        # Configure architecture-specific patterns
+        if system_config['arch'] == 'x86_64':
+            # x86_64: Use special patterns for all comment-format metrics
+            parsing_patterns['special'].update({
+                'l1_fills': {
+                    'pattern': r'(\d+(?:,\d+)*)\s+[^#]*#\s*(\d+(?:\.\d+)?)\s*all_l1_data_cache_fills',
+                    'group': 2,
+                    'transform': lambda x: x.replace('.00', '')
+                },
+                'l2_accesses': {
+                    'pattern': r'(\d+(?:,\d+)*)\s+[^#]*#\s*(\d+(?:\.\d+)?)\s*all_l2_cache_accesses',
+                    'group': 2,
+                    'transform': lambda x: x.replace('.00', '')
+                },
+                'l2_hits': {
+                    'pattern': r'(\d+(?:,\d+)*)\s+[^#]*#\s*(\d+(?:\.\d+)?)\s*all_l2_cache_hits',
+                    'group': 2,
+                    'transform': lambda x: x.replace('.00', '')
+                },
+                'l2_misses': {
+                    'pattern': r'(\d+(?:,\d+)*)\s+[^#]*#\s*(\d+(?:\.\d+)?)\s*all_l2_cache_misses',
+                    'group': 2,
+                    'transform': lambda x: x.replace('.00', '')
+                }
+            })
+        elif system_config['arch'] == 'arm64':
+            # ARM64: Use direct event format for L2
+            parsing_patterns['memory']['l2_accesses'] = r'(\d+(?:,\d+)*)\s+l2d_cache'
+            parsing_patterns['memory']['l2_misses'] = r'(\d+(?:,\d+)*)\s+l2d_cache_refill'
         
-        # Parse branch misses
-        branch_misses_match = re.search(r'(\d+(?:,\d+)*)\s+branch-misses', output)
-        if branch_misses_match:
-            branch_misses = int(branch_misses_match.group(1).replace(',', ''))
-            metrics['branch_misses'] = branch_misses
+        # Parse basic metrics
+        for metric_name, pattern in parsing_patterns['basic'].items():
+            match = re.search(pattern, output)
+            if match:
+                value = int(match.group(1).replace(',', ''))
+                metrics[metric_name] = value
         
+        # Parse memory metrics if this is a memory benchmark
+        if is_memory:
+            # Parse standard memory metrics
+            for metric_name, pattern in parsing_patterns['memory'].items():
+                match = re.search(pattern, output)
+                if match:
+                    value = int(match.group(1).replace(',', ''))
+                    metrics[metric_name] = value
+            
+            # Parse special metrics
+            for metric_name, config in parsing_patterns['special'].items():
+                match = re.search(config['pattern'], output)
+                if match:
+                    value = match.group(config['group'])
+                    if 'transform' in config:
+                        value = config['transform'](value)
+                    value = int(value.replace(',', ''))
+                    
+                    # Use target name if specified, otherwise use metric_name
+                    target_name = config.get('target', metric_name)
+                    metrics[target_name] = value
+            
+            # Debug: Print available metrics for troubleshooting
+            if self.verbose:
+                print(f"    Available memory metrics: {list(metrics.keys())}")
+            
+            # Calculate cache hit ratios
+            self._calculate_cache_hit_ratios(metrics)
+        
+        # Calculate cycles per instruction
         if 'cycles' in metrics and 'instructions' in metrics:
             metrics['cycles_per_inst'] = metrics['cycles'] / metrics['instructions']
         
         return metrics
+    
+    def _calculate_cache_hit_ratios(self, metrics):
+        """Calculate cache hit ratios from parsed metrics."""
+        hit_ratio_calculations = [
+            {
+                'ratio_name': 'l1_load_hit_ratio',
+                'total': 'l1_loads',
+                'misses': 'l1_load_misses',
+                'formula': lambda total, misses: 1.0 - (misses / total)
+            },
+            {
+                'ratio_name': 'l2_hit_ratio',
+                'total': 'l2_accesses',
+                'hits': 'l2_hits',
+                'formula': lambda total, hits: hits / total
+            },
+            {
+                'ratio_name': 'l2_hit_ratio',
+                'total': 'l2_accesses',
+                'misses': 'l2_misses',
+                'formula': lambda total, misses: 1.0 - (misses / total)
+            },
+            {
+                'ratio_name': 'l3_hit_ratio',
+                'total': 'l3_accesses',
+                'misses': 'l3_misses',
+                'formula': lambda total, misses: 1.0 - (misses / total)
+            },
+            {
+                'ratio_name': 'll_cache_hit_ratio',
+                'total': 'll_cache_rd',
+                'misses': 'll_cache_miss_rd',
+                'formula': lambda total, misses: 1.0 - (misses / total)
+            }
+        ]
+        
+        for calc in hit_ratio_calculations:
+            total_key = calc['total']
+            if total_key in metrics and metrics[total_key] > 0:
+                # Check if we have hits or misses
+                if 'hits' in calc and calc['hits'] in metrics:
+                    metrics[calc['ratio_name']] = calc['formula'](metrics[total_key], metrics[calc['hits']])
+                elif 'misses' in calc and calc['misses'] in metrics:
+                    metrics[calc['ratio_name']] = calc['formula'](metrics[total_key], metrics[calc['misses']])
     
     def find_benchmarks(self):
         """Find all benchmark executables."""
@@ -349,6 +557,8 @@ class BenchmarkRunner:
                 if not self.warm_up(benchmark):
                     if not self.verbose:
                         print(" ✗")
+                    else:
+                        print(f"{benchmark} warm-up failed")
                     failed_benchmarks.append(benchmark)
                     continue
                 
@@ -367,6 +577,34 @@ class BenchmarkRunner:
                         print(f"  Instructions: {result['instructions']:,}")
                         print(f"  Branch misses: {result.get('branch_misses', 'N/A')}")
                         print(f"  Cycles/instruction: {result['cycles_per_inst']:.3f}")
+                        
+                        # Print memory metrics if available
+                        if self.is_memory_benchmark(benchmark):
+                            print(f"  Memory metrics:")
+                            if 'l1_loads' in result:
+                                print(f"    L1 loads: {result['l1_loads']:,}")
+                            if 'l1_load_misses' in result:
+                                print(f"    L1 load misses: {result['l1_load_misses']:,}")
+                            if 'l1_load_hit_ratio' in result:
+                                print(f"    L1 load hit ratio: {result['l1_load_hit_ratio']:.3f}")
+                            if 'l1_fills' in result and result.get('l1_fills') != 'N/A':
+                                print(f"    L1 fills: {result['l1_fills']:,}")
+                            if 'all_data_cache_accesses' in result:
+                                print(f"    All data cache accesses: {result['all_data_cache_accesses']:,}")
+                            if 'l2_accesses' in result:
+                                print(f"    L2 accesses: {result['l2_accesses']:,}")
+                            if 'l2_hits' in result:
+                                print(f"    L2 hits: {result['l2_hits']:,}")
+                            if 'l2_misses' in result:
+                                print(f"    L2 misses: {result['l2_misses']:,}")
+                            if 'l2_hit_ratio' in result:
+                                print(f"    L2 hit ratio: {result['l2_hit_ratio']:.3f}")
+                            if 'l3_accesses' in result:
+                                print(f"    L3 accesses: {result['l3_accesses']:,}")
+                            if 'l3_misses' in result:
+                                print(f"    L3 misses: {result['l3_misses']:,}")
+                            if 'l3_hit_ratio' in result:
+                                print(f"    L3 hit ratio: {result['l3_hit_ratio']:.3f}")
                     else:
                         print(" ✓")
                 else:
@@ -380,10 +618,16 @@ class BenchmarkRunner:
                 if latency_result:
                     latency_results.append(latency_result)
                     print(f"\nLatency calculation for {group_name}:")
-                    print(f"  Estimated latency: {latency_result['latency']:.3f} cycles/instruction")
+                    print(f"  Estimated latency: {latency_result['latency']:.3f} cycles/IR instruction (R² = {latency_result['latency_r_squared']:.3f})")
+                    print(f"  Translation efficiency: {latency_result['translation_efficiency']:.3f} instructions/IR instruction (R² = {latency_result['efficiency_r_squared']:.3f})")
         
         # Print summary
         self.print_summary(latency_results)
+        
+        # Save summary to CSV
+        if latency_results:
+            summary_csv_file = self.save_summary_to_csv(latency_results)
+            print(f"Latency summary saved to: {summary_csv_file}")
         
         # Print failure summary
         if failed_benchmarks:
@@ -393,6 +637,11 @@ class BenchmarkRunner:
         if all_results:
             csv_file = self.save_results_to_csv(all_results)
             print(f"\nDetailed results saved to: {csv_file}")
+            
+            # Save memory benchmark results to separate CSV
+            memory_csv_file = self.save_memory_results_to_csv(all_results)
+            if memory_csv_file:
+                print(f"Memory benchmark results saved to: {memory_csv_file}")
     
     def group_benchmarks(self, benchmarks):
         """Group benchmarks by instruction type (e.g., add-imm, add-imm-2, add-imm-4)."""
@@ -421,11 +670,11 @@ class BenchmarkRunner:
         
         # Sort benchmarks within each group by instruction count
         for group in groups.values():
-            group.sort(key=lambda x: self.extract_instruction_count(x))
+            group.sort(key=lambda x: self.extract_instructions_per_loop(x))
         
         return groups
     
-    def extract_instruction_count(self, benchmark_name):
+    def extract_instructions_per_loop(self, benchmark_name):
         """Extract the number of instructions from benchmark name."""
         # e.g., "bench_arithmetic_add-imm-2" -> 2
         parts = benchmark_name.split('_')
@@ -438,38 +687,55 @@ class BenchmarkRunner:
         return 1  # Default to 1 instruction
     
     def calculate_latency(self, group_results):
-        """Calculate latency by comparing different instruction counts."""
+        """Calculate latency and translation efficiency using linear regression on all points with log-scale fitting."""
         if len(group_results) < 2:
             return None
         
         # Sort by instruction count
-        group_results.sort(key=lambda x: self.extract_instruction_count(x['benchmark']))
+        group_results.sort(key=lambda x: self.extract_instructions_per_loop(x['benchmark']))
         
-        # Calculate latency using linear regression
-        instruction_counts = []
-        cycles_per_inst = []
+        # Collect data points
+        target_ir_instructions = []
+        cycles = []
+        instructions = []
         
         for result in group_results:
-            count = self.extract_instruction_count(result['benchmark'])
-            instruction_counts.append(count)
-            cycles_per_inst.append(result['cycles_per_inst'])
+            ir_instructions_per_loop = self.extract_instructions_per_loop(result['benchmark'])
+            target_ir_instructions.append(ir_instructions_per_loop * self.iterations)
+            cycles.append(result['cycles'])
+            instructions.append(result['instructions'])
         
-        # Calculate slope (latency per instruction)
-        if len(instruction_counts) >= 2:
-            # Simple linear regression: slope = (y2-y1)/(x2-x1)
-            x1, y1 = instruction_counts[0], cycles_per_inst[0]
-            x2, y2 = instruction_counts[-1], cycles_per_inst[-1]
+        # Calculate two linear regressions
+        if len(target_ir_instructions) >= 2:
+            # Regression 1: target_ir_instructions vs cycles (latency)
+            latency_slope, latency_intercept, latency_r_squared = self.linear_regression(target_ir_instructions, cycles)
             
-            if x2 != x1:
-                latency = (y2 - y1) / (x2 - x1)
-            else:
-                latency = 0
+            # Regression 2: target_ir_instructions vs instructions (translation efficiency)
+            efficiency_slope, efficiency_intercept, efficiency_r_squared = self.linear_regression(target_ir_instructions, instructions)
+            
+            if latency_slope is None or efficiency_slope is None:
+                print(f"⚠ Warning: Could not calculate regression for {group_results[0]['group']}")
+                return None
+            
+            # Convert slopes back to linear scale
+            latency = latency_slope
+            translation_efficiency = efficiency_slope
+            
+            # Warn about poor fits
+            if latency_r_squared < 0.95:
+                print(f"⚠ Warning: Poor latency fit for {group_results[0]['group']} (R² = {latency_r_squared:.3f})")
+            if efficiency_r_squared < 0.95:
+                print(f"⚠ Warning: Poor efficiency fit for {group_results[0]['group']} (R² = {efficiency_r_squared:.3f})")
             
             return {
                 'group': group_results[0]['group'],
                 'latency': latency,
-                'instruction_counts': instruction_counts,
-                'cycles_per_inst': cycles_per_inst,
+                'translation_efficiency': translation_efficiency,
+                'latency_r_squared': latency_r_squared,
+                'efficiency_r_squared': efficiency_r_squared,
+                'target_ir_instructions': target_ir_instructions,
+                'cycles': cycles,
+                'instructions': instructions,
                 'benchmarks': [r['benchmark'] for r in group_results]
             }
         
@@ -481,20 +747,24 @@ class BenchmarkRunner:
             return
         
         print(f"\n{'='*80}")
-        print("LATENCY SUMMARY")
+        print("IR INSTRUCTION PERFORMANCE SUMMARY")
         print(f"{'='*80}")
-        print(f"{'Instruction Type':<25} {'Latency (cycles)':<15} {'Benchmarks':<30}")
+        print(f"{'Instruction Type':<25} {'Latency (cycles)':<15} {'Translation Eff.':<15} {'Lat R²':<8} {'Eff R²':<8} {'Benchmarks':<30}")
         print("-" * 80)
         
         for result in results:
             instruction_type = result['group']
             latency = f"{result['latency']:.3f}"
+            translation_eff = f"{result['translation_efficiency']:.3f}"
+            latency_r2 = f"{result['latency_r_squared']:.3f}"
+            efficiency_r2 = f"{result['efficiency_r_squared']:.3f}"
             benchmarks = ", ".join(result['benchmarks'])
             
-            print(f"{instruction_type:<25} {latency:<15} {benchmarks:<30}")
+            print(f"{instruction_type:<25} {latency:<15} {translation_eff:<15} {latency_r2:<8} {efficiency_r2:<8} {benchmarks:<30}")
         
-        print(f"\nNote: Latency is calculated as the difference in cycles/instruction")
-        print(f"between different numbers of the same instruction.")
+        print(f"\nNote: Both metrics calculated using linear regression.")
+        print(f"R² shows fit quality (≥0.95 is good, <0.95 triggers warning).")
+        print(f"Latency: cycles per IR instruction, Efficiency: native instructions per IR instruction.")
     
     def print_failure_summary(self, failed_benchmarks):
         """Print a summary of failed benchmarks."""
@@ -538,6 +808,126 @@ class BenchmarkRunner:
         
         print(f"\n✓ Results saved to {csv_filename}")
         return csv_filename
+    
+    def save_memory_results_to_csv(self, all_results):
+        """Save memory benchmark results to a separate CSV file."""
+        # Filter memory benchmarks
+        memory_results = [result for result in all_results if self.is_memory_benchmark(result['benchmark'])]
+        
+        if not memory_results:
+            return None
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        csv_filename = f"memory_benchmark_results_{timestamp}.csv"
+        
+        with open(csv_filename, 'w', newline='') as csvfile:
+            # Check if L1 fill metrics are available in any result
+            has_l1_fills = any('l1_fills' in result and result.get('l1_fills') != 'N/A' for result in memory_results)
+            
+            # Check if L2 cache metrics are available
+            has_l2_cache = any('l2_accesses' in result for result in memory_results)
+            
+            # Check if L3 cache metrics are available
+            has_l3_cache = any('l3_accesses' in result for result in memory_results)
+            
+            # Check if all data cache accesses metric is available
+            has_all_data_cache_accesses = any('all_data_cache_accesses' in result for result in memory_results)
+            
+            # Base fieldnames
+            fieldnames = ['benchmark', 'group', 'cycles', 'instructions', 'branch_misses', 'cycles_per_inst',
+                         'l1_loads', 'l1_load_misses', 'l1_load_hit_ratio']
+            
+            # Add L1 fill fields only if available
+            if has_l1_fills:
+                fieldnames.extend(['l1_fills'])
+            
+            # Add L2 cache fields if available
+            if has_l2_cache:
+                fieldnames.extend(['l2_accesses', 'l2_hits', 'l2_misses', 'l2_hit_ratio'])
+            
+            # Add L3 cache fields if available
+            if has_l3_cache:
+                fieldnames.extend(['l3_accesses', 'l3_misses', 'l3_hit_ratio'])
+            
+            # Add all data cache accesses field if available
+            if has_all_data_cache_accesses:
+                fieldnames.extend(['all_data_cache_accesses'])
+            
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            
+            writer.writeheader()
+            for result in memory_results:
+                row = {
+                    'benchmark': result['benchmark'],
+                    'group': result['group'],
+                    'cycles': result['cycles'],
+                    'instructions': result['instructions'],
+                    'branch_misses': result.get('branch_misses', 'N/A'),
+                    'cycles_per_inst': f"{result['cycles_per_inst']:.6f}",
+                    'l1_loads': result.get('l1_loads', 'N/A'),
+                    'l1_load_misses': result.get('l1_load_misses', 'N/A'),
+                    'l1_load_hit_ratio': f"{result.get('l1_load_hit_ratio', 'N/A'):.6f}" if result.get('l1_load_hit_ratio') is not None else 'N/A'
+                }
+                
+                # Add L1 fill fields only if available
+                if has_l1_fills:
+                    row.update({
+                        'l1_fills': result.get('l1_fills', 'N/A')
+                    })
+                
+                # Add L2 cache fields if available
+                if has_l2_cache:
+                    row.update({
+                        'l2_accesses': result.get('l2_accesses', 'N/A'),
+                        'l2_hits': result.get('l2_hits', 'N/A'),
+                        'l2_misses': result.get('l2_misses', 'N/A'),
+                        'l2_hit_ratio': f"{result.get('l2_hit_ratio', 'N/A'):.6f}" if result.get('l2_hit_ratio') is not None else 'N/A'
+                    })
+                
+                # Add L3 cache fields if available
+                if has_l3_cache:
+                    row.update({
+                        'l3_accesses': result.get('l3_accesses', 'N/A'),
+                        'l3_misses': result.get('l3_misses', 'N/A'),
+                        'l3_hit_ratio': f"{result.get('l3_hit_ratio', 'N/A'):.6f}" if result.get('l3_hit_ratio') is not None else 'N/A'
+                    })
+                
+                # Add all data cache accesses field if available
+                if has_all_data_cache_accesses:
+                    row.update({
+                        'all_data_cache_accesses': result.get('all_data_cache_accesses', 'N/A')
+                    })
+                
+                writer.writerow(row)
+        
+        print(f"✓ Memory benchmark results saved to {csv_filename}")
+        return csv_filename
+    
+    def save_summary_to_csv(self, latency_results):
+        """Save latency summary results to a CSV file."""
+        if not latency_results:
+            return None
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        csv_filename = f"latency_summary_{timestamp}.csv"
+        
+        with open(csv_filename, 'w', newline='') as csvfile:
+            fieldnames = ['instruction_type', 'latency', 'translation_efficiency', 'latency_r_squared', 'efficiency_r_squared', 'benchmarks']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            
+            writer.writeheader()
+            for result in latency_results:
+                writer.writerow({
+                    'instruction_type': result['group'],
+                    'latency': f"{result['latency']:.6f}",
+                    'translation_efficiency': f"{result['translation_efficiency']:.6f}",
+                    'latency_r_squared': f"{result['latency_r_squared']:.6f}",
+                    'efficiency_r_squared': f"{result['efficiency_r_squared']:.6f}",
+                    'benchmarks': ", ".join(result['benchmarks'])
+                })
+        
+        print(f"✓ Latency summary saved to {csv_filename}")
+        return csv_filename
 
 def check_permissions():
     """Check if script has proper permissions for accurate measurements."""
@@ -560,44 +950,58 @@ def check_permissions():
 
 def main():
     """Main function."""
-    import sys
+
+    # Create argument parser
+    parser = argparse.ArgumentParser(
+        description="Run IR instruction performance benchmarks with detailed cache analysis",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s                                    # Run all benchmarks
+  %(prog)s --verbose                          # Run all benchmarks with verbose output
+  %(prog)s bench_memory_store-32KB-4         # Run specific benchmark
+  %(prog)s --cpu-core 2 --iterations 50000000 bench_memory_store-32KB-4
+  %(prog)s --verbose bench_memory_store-32KB-4 bench_memory_load-1MB
+        """
+    )
+    
+    # Add arguments
+    parser.add_argument(
+        'benchmarks',
+        nargs='*',
+        help='Specific benchmarks to run (default: run all available benchmarks)'
+    )
+    
+    parser.add_argument(
+        '--cpu-core',
+        type=int,
+        default=3,
+        help='CPU core to pin benchmarks to (default: 3)'
+    )
+    
+    parser.add_argument(
+        '--iterations',
+        type=int,
+        default=100000000,
+        help='Number of iterations per benchmark (default: 100000000)'
+    )
+    
+    parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Enable verbose output showing detailed metrics'
+    )
+    
+    # Parse arguments
+    args = parser.parse_args()
     
     # Check for proper permissions
     check_permissions()
     
-    # Parse command line arguments
-    cpu_core = 3
-    iterations = 100000000
-    specific_benchmarks = None
-    verbose = False
-    
-    # Check for verbose flag
-    if "--verbose" in sys.argv:
-        verbose = True
-        sys.argv.remove("--verbose")
-    
-    if len(sys.argv) > 1:
-        try:
-            cpu_core = int(sys.argv[1])
-        except ValueError:
-            print("Usage: python3 run_benchmarks.py [cpu_core] [iterations] [benchmark1] [benchmark2] ... [--verbose]")
-            print("Example: python3 run_benchmarks.py 3 100000000 bench_arithmetic_add-imm --verbose")
-            sys.exit(1)
-    
-    if len(sys.argv) > 2:
-        try:
-            iterations = int(sys.argv[2])
-        except ValueError:
-            print("Usage: python3 run_benchmarks.py [cpu_core] [iterations] [benchmark1] [benchmark2] ... [--verbose]")
-            sys.exit(1)
-    
-    if len(sys.argv) > 3:
-        specific_benchmarks = sys.argv[3:]
-    
     # Create and run benchmark runner
-    runner = BenchmarkRunner(cpu_core=cpu_core, iterations=iterations, verbose=verbose)
+    runner = BenchmarkRunner(cpu_core=args.cpu_core, iterations=args.iterations, verbose=args.verbose)
     runner.setup_cpu()
-    runner.run_benchmarks(specific_benchmarks)
+    runner.run_benchmarks(args.benchmarks if args.benchmarks else None)
 
 if __name__ == "__main__":
     main() 
