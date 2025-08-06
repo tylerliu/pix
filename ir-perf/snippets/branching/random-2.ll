@@ -2,13 +2,13 @@
 %val1 = lshr i64 %iv, 8
 %val1b = and i64 %val1, 1
 %cond1 = icmp eq i64 %val1b, 1
-%val2 = lshr i64 %iv, 9
+%val2 = lshr i64 %iv, 15
 %val2b = and i64 %val1, 1
 %cond2 = icmp eq i64 %val2b, 1
-%val3 = lshr i64 %iv, 10
+%val3 = lshr i64 %iv, 21
 %val3b = and i64 %val1, 1
 %cond3 = icmp eq i64 %val3b, 1
-%val4 = lshr i64 %iv, 11
+%val4 = lshr i64 %iv, 28
 %val4b = and i64 %val1, 1
 %cond4 = icmp eq i64 %val4b, 1
 br i1 %cond1, label %taken1, label %not_taken1

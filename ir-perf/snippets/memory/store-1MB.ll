@@ -1,9 +1,9 @@
-; Calculate base seed and add increments for different locations
-%base_seed = mul i64 %iv, 6364136223846793005 ; base LCG seed
-%seed1 = add i64 %base_seed, 0                ; base + 0 * increment
-%seed2 = add i64 %base_seed, %increment1      ; base + 1 * increment  
-%seed3 = add i64 %base_seed, %increment2      ; base + 2 * increment
-%seed4 = add i64 %base_seed, %increment3      ; base + 3 * increment
+; strided access
+%seed1 = phi i64 [0, %entry], [%next_seed1, %loop]
+%seed2 = add i64 %seed1, 128
+%seed3 = add i64 %seed2, 128
+%seed4 = add i64 %seed3, 128
+%next_seed1 = add i64 %seed1, 128
 
 ; Calculate 4 different indices
 %idx1 = and i64 %seed1, 131071 ; mask to 131072 entries (1MB working set)
@@ -23,7 +23,7 @@
 %ptrval3 = ptrtoint i64* %ptr3 to i64
 %ptrval4 = ptrtoint i64* %ptr4 to i64
 
-; Store to 1 location
+; Store to 1 location  
 store i64 %iv, i64* %ptr1
 
 ; Sum only pointer values (stores don't return values)

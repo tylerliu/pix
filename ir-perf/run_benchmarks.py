@@ -17,6 +17,8 @@ import csv
 import math
 from datetime import datetime
 
+from analyze_memory_latency import MemoryLatencyAnalyzer
+
 class BenchmarkRunner:
     def __init__(self, cpu_core=3, iterations=100000000, verbose=False):
         self.cpu_core = cpu_core
@@ -253,8 +255,8 @@ class BenchmarkRunner:
             # x86_64 system events
             return {
                 'basic_events': 'cycles,instructions,branch-misses',
-                'memory_events': 'cycles,instructions,branch-misses,cache-misses,cache-references,L1-dcache-load-misses,L1-dcache-loads,all_data_cache_accesses',
-                'memory_metrics': 'all_l1_data_cache_fills,all_l2_cache_accesses,all_l2_cache_hits,all_l2_cache_misses',
+                'memory_events': 'cycles,instructions,branch-misses,cache-misses,cache-references,L1-dcache-load-misses,L1-dcache-loads,l2_cache_req_stat.dc_access_in_l2,l2_cache_req_stat.dc_hit_in_l2',
+                'memory_metrics': 'all_l1_data_cache_fills',
                 'arch': 'x86_64'
             }
         elif arch in ['aarch64', 'arm64']:
@@ -382,7 +384,6 @@ class BenchmarkRunner:
                 'l1_loads': r'(\d+(?:,\d+)*)\s+(?:L1-dcache-loads|l1d_cache)',
                 'l1_load_misses': r'(\d+(?:,\d+)*)\s+(?:L1-dcache-load-misses|l1d_cache_refill)',
                 'l1_stores': r'(\d+(?:,\d+)*)\s+L1-dcache-stores',
-                'all_data_cache_accesses': r'(\d+(?:,\d+)*)\s+all_data_cache_accesses',
                 'l3_accesses': r'(\d+(?:,\d+)*)\s+(?:l3_cache_accesses|l3d_cache)',
                 'l3_misses': r'(\d+(?:,\d+)*)\s+(?:l3_misses|l3d_cache_refill)',
                 'll_cache_rd': r'(\d+(?:,\d+)*)\s+ll_cache_rd',
@@ -395,28 +396,18 @@ class BenchmarkRunner:
         
         # Configure architecture-specific patterns
         if system_config['arch'] == 'x86_64':
-            # x86_64: Use special patterns for all comment-format metrics
+            # x86_64: Use special patterns for metric-format events
             parsing_patterns['special'].update({
                 'l1_fills': {
                     'pattern': r'(\d+(?:,\d+)*)\s+[^#]*#\s*(\d+(?:\.\d+)?)\s*all_l1_data_cache_fills',
                     'group': 2,
                     'transform': lambda x: x.replace('.00', '')
-                },
-                'l2_accesses': {
-                    'pattern': r'(\d+(?:,\d+)*)\s+[^#]*#\s*(\d+(?:\.\d+)?)\s*all_l2_cache_accesses',
-                    'group': 2,
-                    'transform': lambda x: x.replace('.00', '')
-                },
-                'l2_hits': {
-                    'pattern': r'(\d+(?:,\d+)*)\s+[^#]*#\s*(\d+(?:\.\d+)?)\s*all_l2_cache_hits',
-                    'group': 2,
-                    'transform': lambda x: x.replace('.00', '')
-                },
-                'l2_misses': {
-                    'pattern': r'(\d+(?:,\d+)*)\s+[^#]*#\s*(\d+(?:\.\d+)?)\s*all_l2_cache_misses',
-                    'group': 2,
-                    'transform': lambda x: x.replace('.00', '')
                 }
+            })
+            # x86_64: Add L2 cache request stat events
+            parsing_patterns['memory'].update({
+                'l2_accesses': r'(\d+(?:,\d+)*)\s+l2_cache_req_stat\.dc_access_in_l2',
+                'l2_hits': r'(\d+(?:,\d+)*)\s+l2_cache_req_stat\.dc_hit_in_l2'
             })
         elif system_config['arch'] == 'arm64':
             # ARM64: Use direct event format for L2
@@ -467,6 +458,15 @@ class BenchmarkRunner:
     
     def _calculate_cache_hit_ratios(self, metrics):
         """Calculate cache hit ratios from parsed metrics."""
+        
+        # Calculate L2 misses for x86_64 where we have accesses and hits but no direct miss metric
+        if 'l2_accesses' in metrics and 'l2_hits' in metrics and 'l2_misses' not in metrics:
+            if metrics['l2_accesses'] >= metrics['l2_hits']:
+                metrics['l2_misses'] = metrics['l2_accesses'] - metrics['l2_hits']
+            else:
+                # Handle edge case where hits > accesses (measurement noise)
+                metrics['l2_misses'] = 0
+        
         hit_ratio_calculations = [
             {
                 'ratio_name': 'l1_load_hit_ratio',
@@ -567,6 +567,7 @@ class BenchmarkRunner:
                 if result:
                     result['benchmark'] = benchmark
                     result['group'] = group_name
+                    result['iterations'] = self.iterations
                     group_results.append(result)
                     all_results.append(result)
                     
@@ -642,16 +643,20 @@ class BenchmarkRunner:
             memory_csv_file = self.save_memory_results_to_csv(all_results)
             if memory_csv_file:
                 print(f"Memory benchmark results saved to: {memory_csv_file}")
+                
+                # Run latency analysis if requested
+                if hasattr(self, 'analyze_latency') and self.analyze_latency:
+                    self.run_latency_analysis(memory_csv_file)
     
     def group_benchmarks(self, benchmarks):
         """Group benchmarks by instruction type (e.g., add-imm, add-imm-2, add-imm-4)."""
         groups = {}
         
         for benchmark in benchmarks:
-            # Extract base name (e.g., "add-imm" from "bench_arithmetic_add-imm-2")
+            # Extract base name (e.g., "arithmetic_add_imm" from "bench_arithmetic_add_imm_2")
             parts = benchmark.split('_')
             if len(parts) >= 3:
-                base_name = parts[2]  # e.g., "add-imm"
+                base_name = '_'.join(parts[1:3])  # e.g., "arithmetic_add-imm"
                 
                 # Find the base instruction name (without count suffix)
                 if '-' in base_name:
@@ -830,11 +835,8 @@ class BenchmarkRunner:
             # Check if L3 cache metrics are available
             has_l3_cache = any('l3_accesses' in result for result in memory_results)
             
-            # Check if all data cache accesses metric is available
-            has_all_data_cache_accesses = any('all_data_cache_accesses' in result for result in memory_results)
-            
             # Base fieldnames
-            fieldnames = ['benchmark', 'group', 'cycles', 'instructions', 'branch_misses', 'cycles_per_inst',
+            fieldnames = ['benchmark', 'group', 'iterations', 'cycles', 'instructions', 'branch_misses', 'cycles_per_inst',
                          'l1_loads', 'l1_load_misses', 'l1_load_hit_ratio']
             
             # Add L1 fill fields only if available
@@ -849,10 +851,6 @@ class BenchmarkRunner:
             if has_l3_cache:
                 fieldnames.extend(['l3_accesses', 'l3_misses', 'l3_hit_ratio'])
             
-            # Add all data cache accesses field if available
-            if has_all_data_cache_accesses:
-                fieldnames.extend(['all_data_cache_accesses'])
-            
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             
             writer.writeheader()
@@ -860,6 +858,7 @@ class BenchmarkRunner:
                 row = {
                     'benchmark': result['benchmark'],
                     'group': result['group'],
+                    'iterations': result['iterations'],
                     'cycles': result['cycles'],
                     'instructions': result['instructions'],
                     'branch_misses': result.get('branch_misses', 'N/A'),
@@ -892,16 +891,37 @@ class BenchmarkRunner:
                         'l3_hit_ratio': f"{result.get('l3_hit_ratio', 'N/A'):.6f}" if result.get('l3_hit_ratio') is not None else 'N/A'
                     })
                 
-                # Add all data cache accesses field if available
-                if has_all_data_cache_accesses:
-                    row.update({
-                        'all_data_cache_accesses': result.get('all_data_cache_accesses', 'N/A')
-                    })
-                
                 writer.writerow(row)
         
         print(f"✓ Memory benchmark results saved to {csv_filename}")
         return csv_filename
+
+    def run_latency_analysis(self, memory_csv_file):
+        """Run memory latency analysis by calling the analyzer class directly."""
+        try:
+            print("\n" + "=" * 60)
+            print("RUNNING MEMORY LATENCY ANALYSIS")
+            print("=" * 60)
+
+            analyzer = MemoryLatencyAnalyzer(verbose=self.verbose, iterations=self.iterations)
+
+            # Load data
+            if not analyzer.load_csv_files(memory_csv_file):
+                return
+
+            # Analyze latencies
+            analyzer.analyze_all_groups()
+
+            # Print results
+            analyzer.print_summary()
+
+            # Save results
+            analyzer.save_latency_analysis()
+
+            print("✓ Memory latency analysis completed")
+
+        except Exception as e:
+            print(f"✗ Error running latency analysis: {e}")
     
     def save_summary_to_csv(self, latency_results):
         """Save latency summary results to a CSV file."""
@@ -991,6 +1011,13 @@ Examples:
         action='store_true',
         help='Enable verbose output showing detailed metrics'
     )
+
+    parser.add_argument(
+        '--no-analyze-latency',
+        dest='analyze_latency',
+        action='store_false',
+        help='Disable memory latency analysis after benchmarking (default: enabled)'
+    )
     
     # Parse arguments
     args = parser.parse_args()
@@ -1000,6 +1027,7 @@ Examples:
     
     # Create and run benchmark runner
     runner = BenchmarkRunner(cpu_core=args.cpu_core, iterations=args.iterations, verbose=args.verbose)
+    runner.analyze_latency = args.analyze_latency
     runner.setup_cpu()
     runner.run_benchmarks(args.benchmarks if args.benchmarks else None)
 

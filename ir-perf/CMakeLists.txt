@@ -76,3 +76,49 @@ foreach(TEMPLATE_TYPE ${TEMPLATE_TYPES})
         endif()
     endforeach()
 endforeach()
+
+################################################################################
+# Generate load latency benchmarks
+################################################################################
+
+# Generate load latency benchmarks using Python script during cmake configuration
+execute_process(
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_load_benchmarks.py ${CMAKE_CURRENT_BINARY_DIR}
+    RESULT_VARIABLE BENCHMARK_GEN_RESULT
+    OUTPUT_VARIABLE BENCHMARK_GEN_OUTPUT
+    ERROR_VARIABLE BENCHMARK_GEN_ERROR
+)
+
+if(BENCHMARK_GEN_RESULT EQUAL 0)
+    message(STATUS "Load latency benchmarks generated successfully")
+    if(BENCHMARK_GEN_OUTPUT)
+        message(STATUS "${BENCHMARK_GEN_OUTPUT}")
+    endif()
+else()
+    message(WARNING "Failed to generate load latency benchmarks: ${BENCHMARK_GEN_ERROR}")
+endif()
+
+# Include the generated benchmark list
+set(LOAD_BENCHMARKS_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/load_benchmarks.cmake")
+if(EXISTS ${LOAD_BENCHMARKS_CMAKE})
+    include(${LOAD_BENCHMARKS_CMAKE})
+    
+    # Create executables for each generated benchmark
+    foreach(BENCHMARK_FILE ${LOAD_BENCHMARK_FILES})
+        get_filename_component(BENCH_NAME ${BENCHMARK_FILE} NAME_WE)
+        set(GEN_LL "${CMAKE_CURRENT_BINARY_DIR}/${BENCHMARK_FILE}")
+        set(GEN_OBJ "${CMAKE_CURRENT_BINARY_DIR}/${BENCH_NAME}.o")
+        
+        # Compile .ll to .o
+        add_custom_command(
+            OUTPUT ${GEN_OBJ}
+            COMMAND ${LLVMLLC} -O0 -filetype=obj -o ${GEN_OBJ} ${GEN_LL}
+            DEPENDS ${GEN_LL}
+        )
+        
+        # Add executable with bench_memory_ prefix
+        add_executable(bench_memory_${BENCH_NAME} bench-driver.c ${GEN_OBJ})
+    endforeach()
+else()
+    message(STATUS "Load benchmark list not found. Benchmarks may not have been generated.")
+endif()

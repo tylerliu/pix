@@ -10,10 +10,6 @@ declare void @sink(i64)
 
 define void @bench_loop(i64 %N) {
 entry:
-  ; Pre-compute LCG increments for different access patterns
-  %increment1 = mul i64 6364136223846793005, %N  ; LCG * 1
-  %increment2 = shl i64 %increment1, 1           ; LCG * 2  
-  %increment3 = add i64 %increment1, %increment2 ; LCG * 3
   br label %loop
 
 loop:
