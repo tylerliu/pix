@@ -8,11 +8,12 @@ https://www.alibabacloud.com/blog/the-mechanism-behind-measuring-cache-access-la
 This script generates LLVM IR that measures cache access latency using:
 1. Pointer chasing to avoid cache prefetcher interference
 2. Configurable buffer sizes to target different cache levels
-3. Configurable strides and instructions per iteration
-4. Load operations only
+3. Configurable cache line sizes for pointer placement
+4. Configurable strides and instructions per iteration
+5. Load operations only
 
 Usage:
-    python generate_load_latency_ir.py --buffer-size 32KB --stride 64 --instructions 4 --output bench.ll
+    python generate_load_latency_ir.py --buffer-size 32KB --cache-line-size 64 --stride 64 --instructions 4 --output bench.ll
 """
 
 import argparse
@@ -56,13 +57,13 @@ class MemoryLatencyIRGenerator:
             
         return int(number * multipliers[unit])
     
-    def calculate_buffer_elements(self, buffer_size_bytes: int, stride: int) -> int:
-        """Calculate number of elements in buffer based on size and stride."""
+    def calculate_buffer_elements(self, buffer_size_bytes: int, cache_line_size: int) -> int:
+        """Calculate number of elements in buffer based on size and cache line size."""
         # Ensure we have at least one element
-        return max(1, buffer_size_bytes // stride)
+        return max(1, buffer_size_bytes // cache_line_size)
     
-    def generate_pointer_chain_init(self, num_elements: int, stride: int, buffer_size: int) -> str:
-        """Generate initialization code for pointer chasing chain using a loop."""
+    def generate_pointer_chain_init(self, num_elements: int, stride: int, cache_line_size: int, buffer_size: int) -> str:
+        """Generate initialization code for pointer chasing chain using optimized loops based on working C code."""
         if num_elements <= 1:
             # Special case for single element
             return f'''  ; Single element chain - points to itself
@@ -70,41 +71,73 @@ class MemoryLatencyIRGenerator:
   %buffer_ptr = bitcast i8* %buffer_start to i8**
   store i8* %buffer_start, i8** %buffer_ptr, align 8'''
         
-        # Loop for all elements except the last one
-        loop_count = num_elements - 1
         return f'''  ; Initialize pointer chasing chain for {num_elements} elements
-  ; Each element is {stride} bytes apart
-  ; Loop {loop_count} times for elements 0 to {loop_count-1}
+  ; Each element is placed every {cache_line_size} bytes (cache line size)
+  ; Stride between accesses is {stride} bytes
+  ; Based on working C logic from debug_init.c
 
-  br label %init_loop
-
-init_loop:
-  %i = phi i64 [0, %entry], [%next_i, %init_loop]
-
-  ; Calculate current pointer location
-  %current_offset = mul i64 %i, {stride}
-  %current_ptr = getelementptr inbounds [{buffer_size} x i8], [{buffer_size} x i8]* @buffer, i32 0, i64 %current_offset
+  ; Initialize pointers
+  %buffer_start = getelementptr inbounds [{buffer_size} x i8], [{buffer_size} x i8]* @buffer, i32 0, i32 0
+  %buffer_end = getelementptr inbounds [{buffer_size} x i8], [{buffer_size} x i8]* @buffer, i32 0, i64 {buffer_size}
+  %current_ptr_start = bitcast i8* %buffer_start to i8**
+  %next_ptr_start = getelementptr inbounds i8, i8* %buffer_start, i64 {stride}
   
-  ; Convert to i8** for storing pointer
-  %current_ptr_ptr = bitcast i8* %current_ptr to i8**
-  
-  ; Point to current_ptr + stride
-  %next_ptr = getelementptr inbounds [{buffer_size} x i8], [{buffer_size} x i8]* @buffer, i32 0, i64 %current_offset
-  %next_ptr_offset = getelementptr inbounds i8, i8* %next_ptr, i64 {stride}
-  store i8* %next_ptr_offset, i8** %current_ptr_ptr, align 8
+  ; Check if we have any in-bounds elements
+  %has_in_bounds = icmp ult i8* %next_ptr_start, %buffer_end
+  br i1 %has_in_bounds, label %init_in_bounds_loop, label %init_out_bounds_setup
 
-  ; Continue loop
-  %next_i = add i64 %i, 1
-  %continue = icmp slt i64 %next_i, {loop_count}
-  br i1 %continue, label %init_loop, label %init_last_element
+init_in_bounds_loop:
+  %current_ptr_in = phi i8** [%current_ptr_start, %entry], [%next_current_ptr_in, %init_in_bounds_loop]
+  %next_ptr_in = phi i8* [%next_ptr_start, %entry], [%next_next_ptr_in, %init_in_bounds_loop]
+
+  ; Store the pointer: *current_ptr = next_ptr
+  store i8* %next_ptr_in, i8** %current_ptr_in, align 8
+
+  ; Move to next cache line: current_ptr += cache_line_size
+  %current_ptr_in_i8 = bitcast i8** %current_ptr_in to i8*
+  %next_current_ptr_in_i8 = getelementptr inbounds i8, i8* %current_ptr_in_i8, i64 {cache_line_size}
+  %next_current_ptr_in = bitcast i8* %next_current_ptr_in_i8 to i8**
+  
+  ; Calculate next pointer: next_ptr = current_ptr + stride
+  %next_next_ptr_in = getelementptr inbounds i8, i8* %next_current_ptr_in_i8, i64 {stride}
+
+  ; Check if next pointer is still in bounds
+  %still_in_bounds = icmp ult i8* %next_next_ptr_in, %buffer_end
+  br i1 %still_in_bounds, label %init_in_bounds_loop, label %init_out_bounds_setup
+
+init_out_bounds_setup:
+  %current_ptr_out_start = phi i8** [%current_ptr_start, %entry], [%next_current_ptr_in, %init_in_bounds_loop]
+  %next_out_ptr_start = getelementptr inbounds i8, i8* %buffer_start, i64 {cache_line_size}
+  %stride_end = getelementptr inbounds i8, i8* %buffer_start, i64 {stride}
+  
+  ; Check if we have any out-of-bounds elements
+  %has_out_bounds = icmp ult i8* %next_out_ptr_start, %stride_end
+  br i1 %has_out_bounds, label %init_out_bounds_loop, label %init_last_element
+
+init_out_bounds_loop:
+  %current_ptr_out = phi i8** [%current_ptr_out_start, %init_out_bounds_setup], [%next_current_ptr_out, %init_out_bounds_loop]
+  %next_ptr_out = phi i8* [%next_out_ptr_start, %init_out_bounds_setup], [%next_next_ptr_out, %init_out_bounds_loop]
+
+  ; Store the pointer: *current_ptr = next_ptr
+  store i8* %next_ptr_out, i8** %current_ptr_out, align 8
+
+  ; Move to next cache line: current_ptr += cache_line_size
+  %current_ptr_out_i8 = bitcast i8** %current_ptr_out to i8*
+  %next_current_ptr_out_i8 = getelementptr inbounds i8, i8* %current_ptr_out_i8, i64 {cache_line_size}
+  %next_current_ptr_out = bitcast i8* %next_current_ptr_out_i8 to i8**
+  
+  ; Move to next out-of-bounds target: next_ptr += cache_line_size
+  %next_next_ptr_out = getelementptr inbounds i8, i8* %next_ptr_out, i64 {cache_line_size}
+
+  ; Check if next pointer is still within stride range
+  %still_out_bounds = icmp ult i8* %next_next_ptr_out, %stride_end
+  br i1 %still_out_bounds, label %init_out_bounds_loop, label %init_last_element
 
 init_last_element:
-  ; Handle last element (index {loop_count}) - point back to buffer start
-  %last_offset = mul i64 %next_i, {stride}
-  %last_ptr = getelementptr inbounds [{buffer_size} x i8], [{buffer_size} x i8]* @buffer, i32 0, i64 %last_offset
-  %last_ptr_ptr = bitcast i8* %last_ptr to i8**
-  %buffer_start = getelementptr inbounds [{buffer_size} x i8], [{buffer_size} x i8]* @buffer, i32 0, i32 0
-  store i8* %buffer_start, i8** %last_ptr_ptr, align 8
+  %last_ptr = phi i8** [%current_ptr_out_start, %init_out_bounds_setup], [%next_current_ptr_out, %init_out_bounds_loop]
+  
+  ; Last element points back to buffer start: *last_ptr = buffer
+  store i8* %buffer_start, i8** %last_ptr, align 8
   br label %init_done
 
 init_done:'''
@@ -167,9 +200,9 @@ exit:
   ret void
 }}'''
     
-    def generate_initialization_function(self, num_elements: int, stride: int, buffer_size: int) -> str:
+    def generate_initialization_function(self, num_elements: int, stride: int, cache_line_size: int, buffer_size: int) -> str:
         """Generate function to initialize the pointer chasing chain."""
-        init_code = self.generate_pointer_chain_init(num_elements, stride, buffer_size)
+        init_code = self.generate_pointer_chain_init(num_elements, stride, cache_line_size, buffer_size)
         
         return f'''define void @init_buffer() {{
 entry:
@@ -177,19 +210,20 @@ entry:
   ret void
 }}'''
     
-    def generate_ir(self, buffer_size_bytes: int, stride: int, 
+    def generate_ir(self, buffer_size_bytes: int, stride: int, cache_line_size: int,
                    instructions_per_iter: int) -> str:
         """Generate complete LLVM IR for memory latency benchmark."""
         
-        num_elements = self.calculate_buffer_elements(buffer_size_bytes, stride)
+        num_elements = self.calculate_buffer_elements(buffer_size_bytes, cache_line_size)
         
         # Ensure buffer is large enough to hold all elements with proper alignment
-        actual_buffer_size = max(buffer_size_bytes, num_elements * stride + stride)
+        actual_buffer_size = max(buffer_size_bytes, num_elements * cache_line_size + cache_line_size)
         
         ir_code = f"""; Memory Latency Benchmark - Generated LLVM IR
 ; Operation: load
 ; Buffer Size: {buffer_size_bytes} bytes ({buffer_size_bytes // 1024}KB)
 ; Stride: {stride} bytes
+; Cache Line Size: {cache_line_size} bytes
 ; Instructions per iteration: {instructions_per_iter}
 ; Elements in chain: {num_elements}
 ; Actual buffer size: {actual_buffer_size} bytes
@@ -204,7 +238,7 @@ declare void @sink(i64)
 {self.generate_benchmark_function(instructions_per_iter, actual_buffer_size)}
 
 ; Initialization function
-{self.generate_initialization_function(num_elements, stride, actual_buffer_size)}
+{self.generate_initialization_function(num_elements, stride, cache_line_size, actual_buffer_size)}
 """
         
         return ir_code
@@ -216,17 +250,20 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # L1 cache test (32KB buffer, 64-byte stride, 4 loads per iteration)
-  python generate_load_latency_ir.py --buffer-size 32KB --stride 64 --instructions 4 --output l1_test.ll
+  # L1 cache test (32KB buffer, 64-byte cache line, 64-byte stride, 4 loads per iteration)
+  python generate_load_latency_ir.py --buffer-size 32KB --cache-line-size 64 --stride 64 --instructions 4 --output l1_test.ll
   
-  # L2 cache test (256KB buffer, 64-byte stride, 2 loads per iteration)  
-  python generate_load_latency_ir.py --buffer-size 256KB --stride 64 --instructions 2 --output l2_test.ll
+  # L2 cache test (256KB buffer, 64-byte cache line, 64-byte stride, 2 loads per iteration)  
+  python generate_load_latency_ir.py --buffer-size 256KB --cache-line-size 64 --stride 64 --instructions 2 --output l2_test.ll
   
-  # L3 cache test (8MB buffer, 64-byte stride, 1 load per iteration)
-  python generate_load_latency_ir.py --buffer-size 8MB --stride 64 --instructions 1 --output l3_test.ll
+  # L3 cache test (8MB buffer, 64-byte cache line, 64-byte stride, 1 load per iteration)
+  python generate_load_latency_ir.py --buffer-size 8MB --cache-line-size 64 --stride 64 --instructions 1 --output l3_test.ll
   
-  # Memory test (64MB buffer, 64-byte stride, 1 load per iteration)
-  python generate_load_latency_ir.py --buffer-size 64MB --stride 64 --instructions 1 --output memory_test.ll
+  # Memory test (64MB buffer, 64-byte cache line, 64-byte stride, 1 load per iteration)
+  python generate_load_latency_ir.py --buffer-size 64MB --cache-line-size 64 --stride 64 --instructions 1 --output memory_test.ll
+  
+  # Custom cache line size test (1MB buffer, 128-byte cache line, 256-byte stride)
+  python generate_load_latency_ir.py --buffer-size 1MB --cache-line-size 128 --stride 256 --instructions 1 --output custom_test.ll
         """
     )
     
@@ -234,6 +271,8 @@ Examples:
                        help='Buffer size (e.g., 32KB, 1MB, 2GB)')
     parser.add_argument('--stride', type=int, default=64,
                        help='Stride between accesses in bytes (default: 64)')
+    parser.add_argument('--cache-line-size', type=int, default=64,
+                       help='Cache line size in bytes (default: 64)')
     parser.add_argument('--instructions', type=int, default=1,
                        help='Number of load instructions per loop iteration (default: 1)')
     parser.add_argument('--output', required=True,
@@ -252,6 +291,8 @@ Examples:
         # Validate parameters
         if args.stride <= 0:
             raise ValueError("Stride must be positive")
+        if args.cache_line_size <= 0:
+            raise ValueError("Cache line size must be positive")
         if args.instructions <= 0:
             raise ValueError("Instructions per iteration must be positive")
         
@@ -264,12 +305,14 @@ Examples:
             print(f"Generating LLVM IR for load latency benchmark:")
             print(f"  Buffer size: {buffer_size_bytes} bytes ({buffer_size_bytes // 1024}KB)")
             print(f"  Stride: {args.stride} bytes")
+            print(f"  Cache line size: {args.cache_line_size} bytes")
             print(f"  Load instructions per iteration: {args.instructions}")
         
         # Generate IR
         ir_code = generator.generate_ir(
             buffer_size_bytes=buffer_size_bytes,
             stride=args.stride,
+            cache_line_size=args.cache_line_size,
             instructions_per_iter=args.instructions
         )
         
@@ -281,7 +324,7 @@ Examples:
         print(f"Generated LLVM IR written to: {args.output}")
         
         if args.verbose:
-            num_elements = generator.calculate_buffer_elements(buffer_size_bytes, args.stride)
+            num_elements = generator.calculate_buffer_elements(buffer_size_bytes, args.cache_line_size)
             print(f"Buffer contains {num_elements} pointer chain elements")
             
     except Exception as e:

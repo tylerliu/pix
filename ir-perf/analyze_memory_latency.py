@@ -268,11 +268,11 @@ class MemoryLatencyAnalyzer:
     
     def solve_latency_system(self):
         """
-        Solve for cache latencies using a single comprehensive linear regression.
+        Solve for cache latencies using differenced linear regression.
         
-        Model: cycles = L1_lat*L1_accesses + L2_lat*L2_accesses + ... + Memory_lat*Memory_accesses + base_latencies
+        Model: Δcycles = L1_lat*ΔL1_accesses + L2_lat*ΔL2_accesses + ... + Memory_lat*ΔMemory_accesses
         
-        Where base_latencies are series-specific constants (one per benchmark series like "load-1MB", "store-2KB", etc.)
+        Where Δ represents the difference between consecutive data points within each series.
         """
         if not self.regression_results:
             raise ValueError("No regression results available. Run analyze_all_groups() first.")
@@ -324,37 +324,72 @@ class MemoryLatencyAnalyzer:
             available_cache_levels = self._determine_cache_levels(all_data_points)
             print(f"  Cache levels detected: {', '.join(available_cache_levels)}")
             
-            # Build the comprehensive linear system for this operation
-            # Variables: [L1_lat, L2_lat, L3_lat, ..., Memory_lat, base_series1, base_series2, ...]
+            # Build the differenced linear system for this operation
+            # Variables: [L1_lat, L2_lat, L3_lat, ..., Memory_lat] (no base latencies)
             n_cache_vars = len(available_cache_levels)
-            n_series_vars = len(series_list)
-            n_total_vars = n_cache_vars + n_series_vars
+            n_total_vars = n_cache_vars
             
             A = []  # Coefficient matrix
             b = []  # RHS (cycles)
+            diff_data_points = []  # Track which data points correspond to each difference
             
+            # Group data points by series for differencing
+            series_data = {}
             for data_point in all_data_points:
-                row = [0.0] * n_total_vars
+                series = data_point['series']
+                if series not in series_data:
+                    series_data[series] = []
+                series_data[series].append(data_point)
+            
+            # Sort each series by instruction count for consistent differencing
+            for series in series_data:
+                series_data[series].sort(key=lambda x: x['instruction_count'])
+            
+            # Create differenced equations: (point_i - point_{i-1})
+            for series, points in series_data.items():
+                if len(points) < 2:
+                    continue  # Need at least 2 points for differencing
                 
-                # Cache latency coefficients
-                for i, level in enumerate(available_cache_levels):
-                    if level.lower() == 'memory':
-                        metric_key = 'memory_hits'
-                    else:
-                        metric_key = f'{level.lower()}_hits'
+                for i in range(1, len(points)):
+                    point_curr = points[i]
+                    point_prev = points[i-1]
                     
-                    if metric_key in data_point['scaled_metrics']:
-                        row[i] = data_point['scaled_metrics'][metric_key]
-                
-                # Series base latency coefficient (1 for this series, 0 for others)
-                series_idx = series_list.index(data_point['series'])
-                row[n_cache_vars + series_idx] = 1.0
-                
-                A.append(row)
-                b.append(data_point['scaled_metrics']['cycles'])
+                    row = [0.0] * n_cache_vars  # Only cache variables, no base latencies
+                    
+                    # Cache latency coefficients (difference)
+                    for j, level in enumerate(available_cache_levels):
+                        if level.lower() == 'memory':
+                            metric_key = 'memory_hits'
+                        else:
+                            metric_key = f'{level.lower()}_hits'
+                        
+                        curr_val = point_curr['scaled_metrics'].get(metric_key, 0)
+                        prev_val = point_prev['scaled_metrics'].get(metric_key, 0)
+                        row[j] = curr_val - prev_val
+                    
+                    # RHS: difference in cycles
+                    curr_cycles = point_curr['scaled_metrics']['cycles']
+                    prev_cycles = point_prev['scaled_metrics']['cycles']
+                    cycles_diff = curr_cycles - prev_cycles
+                    
+                    A.append(row)
+                    b.append(cycles_diff)
+                    diff_data_points.append(point_curr)  # Store the "current" point for weighting
             
             A = np.array(A)
             b = np.array(b)
+            
+            # Keep original A and b for R² calculation
+            A_original = A.copy()
+            b_original = b.copy()
+            
+            # Apply weighted least squares: minimize squared percentage error
+            # Each row is multiplied by 1/cycles_i to weight by 1/cycles_i^2
+            for i, data_point in enumerate(diff_data_points):
+                cycles_i = max(1e-9, data_point['scaled_metrics']['cycles'])  # avoid divide-by-zero
+                weight = 1.0 / cycles_i
+                A[i] *= weight
+                b[i] *= weight
             
             print(f"  Solving system: {len(b)} equations, {n_total_vars} variables")
             
@@ -363,8 +398,7 @@ class MemoryLatencyAnalyzer:
                 print("  Sample equations:")
                 for i in range(min(3, len(A))):
                     cache_part = " + ".join([f"{A[i][j]:.3f}*{level}" for j, level in enumerate(available_cache_levels)])
-                    series_part = f" + base_{series_list[np.argmax(A[i][n_cache_vars:])]}"
-                    print(f"    {cache_part}{series_part} = {b[i]:.3f}")
+                    print(f"    {cache_part} = {b[i]:.3f}")
                 
                 # Show coefficient matrix statistics
                 print(f"  Coefficient matrix statistics:")
@@ -376,19 +410,15 @@ class MemoryLatencyAnalyzer:
                 near_zero_cols = []
                 for j in range(A.shape[1]):
                     col = A[:, j]
-                    if j < n_cache_vars:  # Cache variable columns
-                        if col.max() < 1e-6:
-                            near_zero_cols.append(f"{available_cache_levels[j]} (cache)")
-                    else:  # Series base latency columns
-                        if col.max() < 0.5:  # Series indicators should be 0 or 1
-                            near_zero_cols.append(f"{series_list[j-n_cache_vars]} (base)")
+                    if col.max() < 1e-6:
+                        near_zero_cols.append(f"{available_cache_levels[j]} (cache)")
                 
                 if near_zero_cols:
                     print(f"  ⚠ Near-zero coefficient columns: {', '.join(near_zero_cols)}")
                 
                 # Show full coefficient matrix
                 print(f"  \nFull coefficient matrix A:")
-                header = [f"{level:>10s}" for level in available_cache_levels] + [f"base_{s:>8s}" for s in series_list]
+                header = [f"{level:>10s}" for level in available_cache_levels]
                 print("    " + " ".join(header))
                 for i, row in enumerate(A):
                     row_str = " ".join([f"{val:10.6f}" for val in row])
@@ -403,14 +433,13 @@ class MemoryLatencyAnalyzer:
                 if rank < n_total_vars:
                     print(f"  ⚠ Warning: System is rank deficient (rank={rank}, need {n_total_vars})")
                 
-                # Extract results
-                cache_latencies = solution[:n_cache_vars]
-                base_latencies = solution[n_cache_vars:]
+                # Extract results (only cache latencies, no base latencies)
+                cache_latencies = solution
                 
-                # Calculate R-squared
-                y_pred = A @ solution
-                ss_res = np.sum((b - y_pred) ** 2)
-                ss_tot = np.sum((b - np.mean(b)) ** 2)
+                # Calculate R-squared using original (unweighted) data
+                y_pred = A_original @ solution
+                ss_res = np.sum((b_original - y_pred) ** 2)
+                ss_tot = np.sum((b_original - np.mean(b_original)) ** 2)
                 r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
                 
                 # Sanity checks
@@ -430,7 +459,6 @@ class MemoryLatencyAnalyzer:
                 # Store results for this operation
                 operation_results[operation] = {
                     'cache_latencies': dict(zip(available_cache_levels, cache_latencies)),
-                    'base_latencies': dict(zip(series_list, base_latencies)),
                     'r_squared': r_squared,
                     'equations_used': len(b),
                     'rank': rank,
@@ -603,24 +631,7 @@ class MemoryLatencyAnalyzer:
         os.chmod(output_file, 0o666)
         print(f"✓ Cache and memory latencies saved to: {output_file}")
         
-        # Optionally save base latencies to a separate file (secondary importance)
-        if any(len(op_result['base_latencies']) > 0 for op_result in self.latency_results['operation_results'].values()):
-            base_file = output_file.replace('.csv', '_base_latencies.csv')
-            with open(base_file, 'w', newline='') as base_csvfile:
-                base_fieldnames = ['operation', 'series', 'base_latency_cycles']
-                base_writer = csv.DictWriter(base_csvfile, fieldnames=base_fieldnames)
-                base_writer.writeheader()
-                
-                for operation, op_result in self.latency_results['operation_results'].items():
-                    for series, base_latency in op_result['base_latencies'].items():
-                        base_writer.writerow({
-                            'operation': operation,
-                            'series': series,
-                            'base_latency_cycles': f"{base_latency:.4f}"
-                        })
-            
-            os.chmod(base_file, 0o666)
-            print(f"  (Base latencies saved to: {base_file})")
+
     
     def print_summary(self):
         """Print analysis summary for comprehensive regression results"""
@@ -642,7 +653,7 @@ class MemoryLatencyAnalyzer:
                 print(f"\n{operation.upper()} OPERATION:")
                 print(f"  Solution quality (R²): {op_result['r_squared']:.4f}")
                 print(f"  Equations used: {op_result['equations_used']}")
-                print(f"  Matrix rank: {op_result['rank']} (variables: {len(op_result['cache_latencies']) + len(op_result['base_latencies'])})")
+                print(f"  Matrix rank: {op_result['rank']} (variables: {len(op_result['cache_latencies'])})")
                 print(f"  Series analyzed: {', '.join(op_result['series_analyzed'])}")
                 print(f"  Cache levels: {', '.join(op_result['cache_levels'])}")
                 
@@ -675,11 +686,7 @@ class MemoryLatencyAnalyzer:
                     for warning in warnings:
                         print(f"      ⚠ {warning}")
                 
-                # Show base latencies only if verbose or if there are issues
-                if self.verbose and op_result['base_latencies']:
-                    print(f"  \nSeries Base Latencies (for reference):")
-                    for series, base_latency in op_result['base_latencies'].items():
-                        print(f"    {series}: {base_latency:.2f} cycles")
+
         
         print("="*60)
 

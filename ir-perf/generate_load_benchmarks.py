@@ -73,19 +73,20 @@ def generate_benchmarks(cache_info, output_dir):
     output_dir.mkdir(exist_ok=True)
     
     # Cache configurations: (level, size, multiplier, stride_multiplier)
+    # Uses detected cache line size for pointer placement
     cache_configs = [
-        ('L1', cache_info['L1'], 1, 2),  # L1: line_size * 2
-        ('L1', cache_info['L1'], 2, 2),  # L1: line_size * 2
-        ('L2', cache_info['L2'], 1, 2),  # L2: line_size * 2
-        ('L2', cache_info['L2'], 2, 2),  # L2: line_size * 2
-        ('L2', cache_info['L2'], 1, 32), # L2: line_size * 64 (larger stride)
-        ('L2', cache_info['L2'], 2, 32), # L2: line_size * 64 (larger stride)
-        ('L3', cache_info['L3'], 1, 2),  # L3: line_size * 2
-        ('L3', cache_info['L3'], 2, 2),  # L3: line_size * 2
-        ('L3', cache_info['L3'], 8, 2),  # L3: line_size * 2 (exceeds cache)
-        ('L3', cache_info['L3'], 1, 32), # L3: line_size * 64 (larger stride)
-        ('L3', cache_info['L3'], 2, 32), # L3: line_size * 64 (larger stride)
-        ('L3', cache_info['L3'], 8, 32), # L3: line_size * 64 (larger stride, exceeds cache)
+        ('L1', cache_info['L1'], 1, 2),  # L1: cache_line_size * 2
+        ('L1', cache_info['L1'], 2, 2),  # L1: cache_line_size * 2
+        ('L2', cache_info['L2'], 1, 2),  # L2: cache_line_size * 2
+        ('L2', cache_info['L2'], 2, 2),  # L2: cache_line_size * 2
+        ('L2', cache_info['L2'], 1, 64), # L2: cache_line_size * 64 (larger stride)
+        ('L2', cache_info['L2'], 2, 64), # L2: cache_line_size * 64 (larger stride)
+        ('L3', cache_info['L3'], 1, 2),  # L3: cache_line_size * 2
+        ('L3', cache_info['L3'], 2, 2),  # L3: cache_line_size * 2
+        ('L3', cache_info['L3'], 8, 2),  # L3: cache_line_size * 2 (exceeds cache)
+        ('L3', cache_info['L3'], 1, 64), # L3: cache_line_size * 64 (larger stride)
+        ('L3', cache_info['L3'], 2, 64), # L3: cache_line_size * 64 (larger stride)
+        ('L3', cache_info['L3'], 8, 64), # L3: cache_line_size * 64 (larger stride, exceeds cache)
     ]
     
     # Instructions per loop variations
@@ -149,6 +150,7 @@ def generate_benchmarks(cache_info, output_dir):
                 sys.executable,
                 os.path.join(os.path.dirname(__file__), "generate_load_latency_ir.py"),
                 "--buffer-size", buffer_size_arg,
+                "--cache-line-size", str(cache_info['line_size']),
                 "--stride", str(stride),
                 "--instructions", str(instructions),
                 "--output", str(output_file)
@@ -194,7 +196,7 @@ def main():
     cache_info = read_cache_info()
     
     print(f"Cache configuration:")
-    print(f"  L1 line size: {cache_info['line_size']} bytes")
+    print(f"  Cache line size: {cache_info['line_size']} bytes")
     print(f"  Stride: {cache_info['line_size'] * 2} bytes")
     print(f"  L1 cache size: {cache_info['L1']}")
     print(f"  L2 cache size: {cache_info['L2']}")
