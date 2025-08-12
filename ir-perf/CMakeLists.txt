@@ -122,3 +122,24 @@ if(EXISTS ${LOAD_BENCHMARKS_CMAKE})
 else()
     message(STATUS "Load benchmark list not found. Benchmarks may not have been generated.")
 endif()
+
+################################################################################
+# Optional: DOCA Telemetry DPA helper
+################################################################################
+
+option(ENABLE_DPA "Enable building DPA telemetry helper if DOCA is available" ON)
+if (ENABLE_DPA)
+    find_library(DOCA_TELEMETRY_DPA_LIB NAMES doca_telemetry_dpa)
+    find_path(DOCA_INCLUDE_DIR NAMES doca_telemetry_dpa.h
+        HINTS /opt/mellanox/doca/include /usr/include /usr/local/include)
+
+    if (DOCA_TELEMETRY_DPA_LIB AND DOCA_INCLUDE_DIR)
+        message(STATUS "Found DOCA Telemetry DPA: lib=${DOCA_TELEMETRY_DPA_LIB} include=${DOCA_INCLUDE_DIR}")
+        add_executable(dpa_telemetry_helper dpa_telemetry_helper.c)
+        target_include_directories(dpa_telemetry_helper PRIVATE ${DOCA_INCLUDE_DIR})
+        target_link_libraries(dpa_telemetry_helper ${DOCA_TELEMETRY_DPA_LIB})
+        target_compile_definitions(dpa_telemetry_helper PRIVATE HAVE_DOCA_TELEMETRY_DPA=1)
+    else()
+        message(STATUS "DOCA Telemetry DPA not found. 'dpa_telemetry_helper' will not be built.")
+    endif()
+endif()

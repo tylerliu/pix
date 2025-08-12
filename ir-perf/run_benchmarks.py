@@ -1018,18 +1018,53 @@ Examples:
         action='store_false',
         help='Disable memory latency analysis after benchmarking (default: enabled)'
     )
+    # Backend selection and DPA options
+    parser.add_argument(
+        '--backend',
+        choices=['cpu', 'dpa'],
+        default='cpu',
+        help='Select benchmarking backend: cpu (perf) or dpa (DOCA Telemetry DPA)'
+    )
+    parser.add_argument(
+        '--dpa-device',
+        help='DOCA device identifier (e.g., pci=0000:06:00.0). If omitted, the first supported device is used'
+    )
+    parser.add_argument(
+        '--dpa-sample-ms',
+        type=int,
+        default=1000,
+        help='Sampling interval in milliseconds for DPA telemetry (default: 1000)'
+    )
+    parser.add_argument(
+        '--dpa-thread-filter',
+        help='Regex to include only matching DPA threads by name or ID when sampling'
+    )
     
     # Parse arguments
     args = parser.parse_args()
     
-    # Check for proper permissions
-    check_permissions()
-    
-    # Create and run benchmark runner
-    runner = BenchmarkRunner(cpu_core=args.cpu_core, iterations=args.iterations, verbose=args.verbose)
-    runner.analyze_latency = args.analyze_latency
-    runner.setup_cpu()
-    runner.run_benchmarks(args.benchmarks if args.benchmarks else None)
+    if args.backend == 'cpu':
+        # Check for proper permissions
+        check_permissions()
+        
+        # Create and run benchmark runner
+        runner = BenchmarkRunner(cpu_core=args.cpu_core, iterations=args.iterations, verbose=args.verbose)
+        runner.analyze_latency = args.analyze_latency
+        runner.setup_cpu()
+        runner.run_benchmarks(args.benchmarks if args.benchmarks else None)
+    else:
+        # DPA backend
+        try:
+            from dpa_runner import DPATelemetryRunner
+        except ImportError:
+            print("✗ DPA backend not available: missing dpa_runner module")
+            print("  Ensure the repository contains dpa_runner.py and required DOCA SDK components.")
+            return 1
+
+        dpa = DPATelemetryRunner(verbose=args.verbose)
+        ok = dpa.run(device=args.dpa_device, sample_ms=args.dpa_sample_ms, thread_filter=args.dpa_thread_filter)
+        if not ok:
+            return 1
 
 if __name__ == "__main__":
     main() 
