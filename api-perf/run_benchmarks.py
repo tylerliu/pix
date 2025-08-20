@@ -3,6 +3,10 @@ import os
 import shlex
 import subprocess
 import sys
+import csv
+import re
+import json
+from datetime import datetime
 
 
 def detect_and_explain_common_errors(stdout_text: str, stderr_text: str) -> None:
@@ -98,7 +102,31 @@ def choose_prefix_for_function(build_dir: str, function_name: str, candidate_pre
     return None
 
 
-def run_benchmark(function_name: str, build_dir: str, prefix: str, exec_args: list[str]) -> int:
+def _parse_cycles(stdout_text: str) -> float | None:
+    # Expect lines like: "Cycles per call: <float>" or similar
+    match = re.search(r"Cycles per call:\s*([0-9]+\.[0-9]+|[0-9]+)", stdout_text)
+    if match:
+        try:
+            return float(match.group(1))
+        except ValueError:
+            return None
+    return None
+
+
+def _parse_metadata(stdout_text: str) -> dict:
+    # Look for lines like: "metadata: {'key': value, ...}"
+    match = re.search(r"metadata:\s*(\{.*\})", stdout_text)
+    if match:
+        try:
+            # Replace single quotes with double quotes for valid JSON
+            json_str = match.group(1).replace("'", '"')
+            return json.loads(json_str)
+        except (ValueError, json.JSONDecodeError):
+            return {}
+    return {}
+
+
+def run_benchmark(function_name: str, build_dir: str, prefix: str, exec_args: list[str], env: dict[str, str] | None = None, case_info: str | None = None) -> tuple[int, float | None, dict, str, str]:
     exe_path = build_executable_path(build_dir, prefix, function_name)
 
     if not os.path.exists(exe_path):
@@ -108,11 +136,12 @@ def run_benchmark(function_name: str, build_dir: str, prefix: str, exec_args: li
 
     cmd = [exe_path] + exec_args
 
-    print(f"\n--- Running benchmark for {function_name} ---")
+    case_suffix = f" ({case_info})" if case_info else ""
+    print(f"\n--- Running benchmark for {function_name}{case_suffix} ---")
     print("Command:", " ".join(shlex.quote(part) for part in cmd))
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, env=env)
     except FileNotFoundError:
         print(f"Failed to execute: {exe_path} (file not found)", file=sys.stderr)
         return 1
@@ -124,10 +153,12 @@ def run_benchmark(function_name: str, build_dir: str, prefix: str, exec_args: li
         if result.stderr:
             print(result.stderr, file=sys.stderr)
         detect_and_explain_common_errors(result.stdout or "", result.stderr or "")
-        return result.returncode
+        return result.returncode, None, {}, result.stdout, result.stderr
     else:
         print(result.stdout.strip())
-        return 0
+        cycles = _parse_cycles(result.stdout or "")
+        metadata = _parse_metadata(result.stdout or "")
+        return 0, cycles, metadata, result.stdout, result.stderr
 
 
 if __name__ == '__main__':
@@ -142,6 +173,8 @@ if __name__ == '__main__':
     parser.add_argument('functions', nargs='*', help='Functions to benchmark (defaults to all discovered).')
     parser.add_argument('--build-dir', default='build', help='Meson build directory containing benchmark executables.')
     parser.add_argument('--prefix', default=None, help='Force a specific executable prefix (e.g., dpdk). If omitted, prefix is auto-detected.')
+    parser.add_argument('--iterations', type=int, default=1000000, help='Number of iterations for benchmarks (default: 1000000)')
+    parser.add_argument('--csv', default=None, help='Path to CSV file for results. If omitted, a timestamped file is created in the current directory.')
 
     args = parser.parse_args(argv)
 
@@ -161,14 +194,43 @@ if __name__ == '__main__':
 
     exit_code = 0
 
+    # CSV setup
+    csv_path = args.csv
+    if not csv_path:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        csv_path = f"api_perf_results_{timestamp}.csv"
+    csv_file = open(csv_path, mode='w', newline='')
+    csv_writer = csv.writer(csv_file)
+    csv_writer.writerow(['function', 'prefix', 'iterations', 'total_cycles', 'metadata'])
+
+    # Fixed cases for burst-based functions
+    BURST_TEST_FUNCTIONS: set[str] = { 'rte_eth_tx_burst', 'rte_eth_rx_burst' }
+    DEFAULT_BURST_CASES: list[int] = [1, 2, 8, 32]
+
     if len(args.functions) == 0:
         # Run all discovered, across all prefixes
         for prefix in prefixes:
             functions = discover_functions(args.build_dir, prefix)
             for func in functions:
-                rc = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, exec_args=exec_args)
-                if rc != 0:
-                    exit_code = rc
+                if func in BURST_TEST_FUNCTIONS:
+                    for b in DEFAULT_BURST_CASES:
+                        cmd_args = ['-b', str(b), '-i', str(args.iterations), '--'] + exec_args
+                        rc, cycles, metadata, _out, _err = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, exec_args=cmd_args, env=os.environ.copy(), case_info=f"burst_size={b}")
+                        if cycles is not None:
+                            total_cycles = cycles * args.iterations
+                            metadata_json = json.dumps(metadata).replace('"', "'")
+                            csv_writer.writerow([func, prefix, args.iterations, total_cycles, metadata_json])
+                        if rc != 0:
+                            exit_code = rc
+                else:
+                    cmd_args = ['-i', str(args.iterations), '--'] + exec_args
+                    rc, cycles, metadata, _out, _err = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, exec_args=cmd_args, env=os.environ.copy())
+                    if cycles is not None:
+                        total_cycles = cycles * args.iterations
+                        metadata_json = json.dumps(metadata).replace('"', "'")
+                        csv_writer.writerow([func, prefix, args.iterations, total_cycles, metadata_json])
+                    if rc != 0:
+                        exit_code = rc
     else:
         # Run specified functions, choosing best available prefix per function
         for func in args.functions:
@@ -177,9 +239,27 @@ if __name__ == '__main__':
                 print(f"Executable not found for function '{func}' with any known prefix in {args.build_dir}.", file=sys.stderr)
                 exit_code = 1
                 continue
-            rc = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, exec_args=exec_args)
-            if rc != 0:
-                exit_code = rc
+            if func in BURST_TEST_FUNCTIONS:
+                for b in DEFAULT_BURST_CASES:
+                    cmd_args = ['-b', str(b), '-i', str(args.iterations), '--'] + exec_args
+                    rc, cycles, metadata, _out, _err = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, exec_args=cmd_args, env=os.environ.copy(), case_info=f"burst_size={b}")
+                    if cycles is not None:
+                        total_cycles = cycles * args.iterations
+                        metadata_json = json.dumps(metadata).replace('"', "'")
+                        csv_writer.writerow([func, prefix, args.iterations, total_cycles, metadata_json])
+                    if rc != 0:
+                        exit_code = rc
+            else:
+                cmd_args = ['-i', str(args.iterations), '--'] + exec_args
+                rc, cycles, metadata, _out, _err = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, exec_args=cmd_args, env=os.environ.copy())
+                if cycles is not None:
+                    total_cycles = cycles * args.iterations
+                    metadata_json = json.dumps(metadata).replace('"', "'")
+                    csv_writer.writerow([func, prefix, args.iterations, total_cycles, metadata_json])
+                if rc != 0:
+                    exit_code = rc
 
-    print("\n--- All benchmarks complete ---")
+    csv_file.flush()
+    csv_file.close()
+    print(f"\n--- All benchmarks complete ---\nResults written to {csv_path}")
     sys.exit(exit_code)

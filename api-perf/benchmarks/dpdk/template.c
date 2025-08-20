@@ -9,7 +9,7 @@
 // {{DPDK_HEADERS}}
 
 void setup_benchmark() {
-    if (rte_pktmbuf_alloc_bulk(mbuf_pool, bufs, BURST_SIZE) != 0) {
+    if (rte_pktmbuf_alloc_bulk(mbuf_pool, bufs, g_burst_size) != 0) {
         rte_exit(EXIT_FAILURE, "Cannot allocate mbufs\n");
     }
     // {{BENCHMARK_SETUP}}
@@ -20,12 +20,12 @@ void run_benchmark() {
     volatile uint64_t result = 0;
 
     start = rte_rdtsc();
-    for (int i = 0; i < ITERATIONS; ++i) {
+    for (unsigned long long i = 0; i < g_iterations; ++i) {
         // {{BENCHMARK_LOOP}}
     }
     end = rte_rdtsc();
 
-    printf("Cycles per call: %f\n", (double)(end - start) / ITERATIONS);
+    printf("Cycles per call: %f\n", (double)(end - start) / (double)g_iterations);
 }
 
 void teardown_benchmark() {

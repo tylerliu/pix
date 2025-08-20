@@ -1,1 +1,1 @@
-rte_eth_tx_burst(0, 0, bufs, BURST_SIZE);
+rte_eth_tx_burst(0, 0, bufs, g_burst_size);
