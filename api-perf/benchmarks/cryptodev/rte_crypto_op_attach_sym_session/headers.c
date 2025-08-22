@@ -1,0 +1,1 @@
+struct rte_crypto_op *ops[32];

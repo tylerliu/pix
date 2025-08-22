@@ -1,17 +1,6 @@
 const char* pkt_size_str = get_benchmark_param("pkt_size");
 pkt_size = pkt_size_str ? (unsigned int)strtoul(pkt_size_str, NULL, 10) : 64;
 
-const char* burst_size_str = get_benchmark_param("burst_size");
-burst_size = burst_size_str ? (unsigned int)strtoul(burst_size_str, NULL, 10) : 32;
-
-if (burst_size != 32) {
-    free(bufs);
-    bufs = calloc(burst_size, sizeof(struct rte_mbuf *));
-    if (bufs == NULL) {
-        rte_exit(EXIT_FAILURE, "Cannot allocate bufs array for burst size %u\n", burst_size);
-    }
-}
-
 // Create a template mbuf with proper packet data
 struct rte_mbuf *template_mbuf = rte_pktmbuf_alloc(mbuf_pool);
 if (template_mbuf == NULL) {
@@ -51,16 +40,5 @@ for (unsigned int i = 0; i < pkt_size - 42; i++) {
 template_mbuf->data_len = pkt_size;
 template_mbuf->pkt_len = pkt_size;
 
-// Clone the template mbuf for all bufs
-for (unsigned int i = 0; i < burst_size; i++) {
-    bufs[i] = rte_pktmbuf_clone(template_mbuf, mbuf_pool);
-    if (bufs[i] == NULL) {
-        rte_exit(EXIT_FAILURE, "Cannot clone mbuf %u\n", i);
-    }
-}
-
-// Free the template mbuf
-//rte_pktmbuf_free(template_mbuf);
-
-// Initialize a variable to accumulate total packets sent
-unsigned long result = 0;
+// Use the template mbuf directly
+bufs[0] = template_mbuf;

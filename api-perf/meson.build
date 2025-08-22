@@ -15,22 +15,31 @@ python3 = find_program('python3', required: true)
 gen_script = files('generate_benchmark.py')
 
 # Run the generation script
-benchmark_configs = {'dpdk': [
-    'rte_eth_tx_burst',
-    'rte_eth_rx_burst',
-    'rte_prefetch0',
-    'rte_pktmbuf_clone',
-    'rte_memcpy',
-    'rte_ether_addr_copy',
-    'rte_bswap16',
-    'rte_bswap32',
-    'rte_bswap64',
-    'rte_raw_cksum',
-    'rte_ipv4_phdr_cksum',
-    'rte_ipv4_cksum',
-    'rte_ipv4_udptcp_cksum',
-    'empty'
-]}
+benchmark_configs = {
+    'dpdk': [
+        'rte_eth_tx_burst',
+        'rte_eth_rx_burst',
+        'rte_prefetch0',
+        'rte_pktmbuf_clone',
+        'rte_memcpy',
+        'rte_ether_addr_copy',
+        'rte_bswap16',
+        'rte_bswap32',
+        'rte_bswap64',
+        'rte_raw_cksum',
+        'rte_ipv4_phdr_cksum',
+        'rte_ipv4_cksum',
+        'rte_ipv4_udptcp_cksum',
+        'empty'
+    ],
+    'cryptodev': [
+        'empty',
+        'rte_cryptodev_sym_session_create_free',
+        'rte_crypto_op_bulk_alloc_free',
+        'rte_crypto_op_attach_sym_session',
+        'rte_cryptodev_enqueue_dequeue_burst'
+    ]
+}
 generated_sources = []
 
 foreach type, functions : benchmark_configs

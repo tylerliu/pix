@@ -32,7 +32,7 @@ def generate_benchmark(function_name, output_file, template_base_dir, benchmark_
         benchmark_loop = '// No-op'
         code = template.replace('// {{BENCHMARK_LOOP}}', benchmark_loop)
         code = code.replace('printf("Cycles per call: %f\n", (double)(end - start) / ITERATIONS);',
-                            'printf("Cycles for empty: %f\n", (double)(end - start) / ITERATIONS);')
+                            f'printf("Cycles for {benchmark_type} empty: %f\\n", (double)(end - start) / ITERATIONS);')
     else:
         benchmark_loop = f'        {call}'
         code = template.replace('// {{BENCHMARK_LOOP}}', benchmark_loop)
