@@ -8,6 +8,7 @@
 // Runtime-configurable parameters with sensible defaults
 extern unsigned int g_burst_size;     // number of packets per burst for rx/tx APIs
 extern unsigned long long g_iterations; // iterations for the benchmark loop
+extern unsigned int g_payload_size;   // payload size in bytes for packet generation
 
 extern struct rte_mempool *mbuf_pool;
 extern struct rte_mbuf **bufs; // allocated at runtime to size g_burst_size

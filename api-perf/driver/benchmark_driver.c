@@ -7,6 +7,7 @@
 // Defaults, override via command line args
 unsigned int g_burst_size = 32;
 unsigned long long g_iterations = 1000000ULL;
+unsigned int g_payload_size = 64;  // Default payload size (64 bytes minimum)
 
 struct rte_mempool *mbuf_pool;
 struct rte_mbuf **bufs;
@@ -34,6 +35,12 @@ static void parse_command_line_args(int argc, char **argv) {
             g_iterations = strtoull(argv[i + 1], NULL, 10);
             if (g_iterations == 0) {
                 g_iterations = 1000000ULL; // fallback to default
+            }
+            i++; // skip the value
+        } else if (strcmp(argv[i], "-p") == 0 && i + 1 < benchmark_argc) {
+            g_payload_size = (unsigned int)strtoul(argv[i + 1], NULL, 10);
+            if (g_payload_size < 8) {
+                g_payload_size = 64; // fallback to default minimum
             }
             i++; // skip the value
         }
