@@ -10,9 +10,25 @@
 
 static uint16_t port_id = 0;
 
+struct rte_mempool *mbuf_pool;
+struct rte_mbuf **bufs;
+
 void setup_ethernet_device() {
     if (rte_eth_dev_count_avail() == 0)
         rte_exit(EXIT_FAILURE, "No available Ethernet devices\n");
+
+    // Create mbuf pool for Ethernet RX/TX
+    if (mbuf_pool == NULL) {
+        mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", 8192, 256, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
+        if (mbuf_pool == NULL)
+            rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
+    }
+
+    // Allocate bufs with a default size. Benchmarks that need a different size can re-allocate it.
+    bufs = calloc(32, sizeof(struct rte_mbuf *));
+    if (bufs == NULL) {
+        rte_exit(EXIT_FAILURE, "Cannot allocate bufs array for default burst size 32\n");
+    }
 
     struct rte_eth_conf port_conf = {
         .rxmode = {
@@ -59,7 +75,8 @@ void run_benchmark() {
     }
     end = rte_rdtsc();
 
-    printf("Cycles per call: %f\n", (double)(end - start) / (double)g_iterations);
+    uint64_t total_cycles = end - start;
+    printf("Total cycles: %lu\n", (unsigned long)total_cycles);
 }
 
 void teardown_benchmark() {
@@ -67,6 +84,11 @@ void teardown_benchmark() {
 }
 
 void teardown_ethernet_device() {
+    if (bufs) {
+        free(bufs);
+        bufs = NULL;
+    }
+
     rte_eth_dev_stop(port_id);
     rte_eth_dev_close(port_id);
 }

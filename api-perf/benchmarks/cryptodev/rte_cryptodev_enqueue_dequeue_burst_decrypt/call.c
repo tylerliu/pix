@@ -4,3 +4,4 @@ unsigned int burst_size = burst_size_str ? (unsigned int)strtoul(burst_size_str,
 rte_cryptodev_enqueue_burst(cdev_id, 0, ops, burst_size);
 struct rte_crypto_op *dequeued_ops[burst_size];
 rte_cryptodev_dequeue_burst(cdev_id, 0, dequeued_ops, burst_size);
+

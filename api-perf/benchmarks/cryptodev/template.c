@@ -13,7 +13,8 @@
 // {{DPDK_HEADERS}}
 
 static uint8_t cdev_id = 0;
-static struct rte_cryptodev_sym_session *session;
+static struct rte_cryptodev_sym_session *enc_session;
+static struct rte_cryptodev_sym_session *dec_session;
 static struct rte_mempool *crypto_op_pool;
 static struct rte_mempool *session_pool;
 
@@ -78,12 +79,12 @@ void setup_cryptodev() {
         key[i] = i; // Simple key for testing
     }
 
-    // Setup AEAD transform
-    struct rte_crypto_sym_xform aead_xform = {
+    // Setup AEAD transforms (encrypt and decrypt)
+    struct rte_crypto_sym_xform enc_xform = {
         .type = RTE_CRYPTO_SYM_XFORM_AEAD,
         .next = NULL,
         .aead = {
-            .op = RTE_CRYPTO_AEAD_OP_DECRYPT,
+            .op = RTE_CRYPTO_AEAD_OP_ENCRYPT,
             .algo = RTE_CRYPTO_AEAD_AES_GCM,
             .key.data = key,
             .key.length = AES128_KEY_LENGTH,
@@ -94,10 +95,17 @@ void setup_cryptodev() {
         },
     };
 
-    // Create session
-    session = rte_cryptodev_sym_session_create(cdev_id, &aead_xform, session_pool);
-    if (session == NULL) {
-        rte_exit(EXIT_FAILURE, "Failed to create crypto session\n");
+    struct rte_crypto_sym_xform dec_xform = enc_xform;
+    dec_xform.aead.op = RTE_CRYPTO_AEAD_OP_DECRYPT;
+
+    // Create sessions
+    enc_session = rte_cryptodev_sym_session_create(cdev_id, &enc_xform, session_pool);
+    if (enc_session == NULL) {
+        rte_exit(EXIT_FAILURE, "Failed to create encrypt session\n");
+    }
+    dec_session = rte_cryptodev_sym_session_create(cdev_id, &dec_xform, session_pool);
+    if (dec_session == NULL) {
+        rte_exit(EXIT_FAILURE, "Failed to create decrypt session\n");
     }
 }
 
@@ -115,7 +123,8 @@ void run_benchmark() {
     }
     end = rte_rdtsc();
 
-    printf("Cycles per call: %f\n", (double)(end - start) / (double)g_iterations);
+    uint64_t total_cycles = end - start;
+    printf("Total cycles: %lu\n", (unsigned long)total_cycles);
 }
 
 void teardown_benchmark() {
@@ -123,10 +132,14 @@ void teardown_benchmark() {
 }
 
 void teardown_cryptodev() {
-    // Free session
-    if (session != NULL) {
-        rte_cryptodev_sym_session_free(cdev_id, session);
-        session = NULL;
+    // Free sessions
+    if (enc_session != NULL) {
+        rte_cryptodev_sym_session_free(cdev_id, enc_session);
+        enc_session = NULL;
+    }
+    if (dec_session != NULL) {
+        rte_cryptodev_sym_session_free(cdev_id, dec_session);
+        dec_session = NULL;
     }
     
     // Stop and close crypto device

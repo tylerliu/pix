@@ -1,1 +1,1 @@
-rte_crypto_op_attach_sym_session(ops[0], session);
+rte_crypto_op_attach_sym_session(ops[0], dec_session);

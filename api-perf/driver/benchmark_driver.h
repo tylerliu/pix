@@ -8,9 +8,6 @@
 // Runtime-configurable parameters with sensible defaults
 extern unsigned long long g_iterations; // iterations for the benchmark loop
 
-extern struct rte_mempool *mbuf_pool;
-extern struct rte_mbuf **bufs;
-
 // Generic parameter retrieval
 const char *get_benchmark_param(const char *key);
 

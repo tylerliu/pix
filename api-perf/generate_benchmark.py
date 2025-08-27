@@ -31,13 +31,11 @@ def generate_benchmark(function_name, output_file, template_base_dir, benchmark_
     if function_name == "empty":
         benchmark_loop = '// No-op'
         code = template.replace('// {{BENCHMARK_LOOP}}', benchmark_loop)
-        code = code.replace('printf("Cycles per call: %f\n", (double)(end - start) / ITERATIONS);',
-                            f'printf("Cycles for {benchmark_type} empty: %f\\n", (double)(end - start) / ITERATIONS);')
+        # No need to replace the printf statement for empty benchmarks since it's already correct
     else:
         benchmark_loop = f'        {call}'
         code = template.replace('// {{BENCHMARK_LOOP}}', benchmark_loop)
-        code = code.replace('printf("Cycles per call: %f\n", (double)(end - start) / ITERATIONS);',
-                            f'printf("Cycles per call: %f\n", (double)(end - start) / ITERATIONS);')
+        # No need to replace the printf statement since it's already correct
 
 
     code = code.replace('// {{BENCHMARK_SETUP}}', benchmark_setup)

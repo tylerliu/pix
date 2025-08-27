@@ -142,15 +142,14 @@ def get_benchmark_config(full_config, prefix, func):
 
 
 def _parse_cycles(stdout_text: str) -> float | None:
-    # Expect lines like: "Cycles per call: <float>" or "Cycles for <type> empty: <float>"
-    match = re.search(r"Cycles (?:per call|for \w+ empty):\s*([0-9]+\.[0-9]+|[0-9]+)", stdout_text)
+    # Expect lines like: "Total cycles: <integer>" or "Cycles for <type> empty: <float>"
+    match = re.search(r"(?:Total cycles|Cycles for \w+ empty):\s*([0-9]+(?:\.[0-9]+)?)", stdout_text)
     if match:
         try:
             return float(match.group(1))
         except ValueError:
             return None
     return None
-
 
 def _parse_metadata(stdout_text: str) -> dict:
     # Look for lines like: "metadata: {'key': value, ...}"
@@ -206,7 +205,7 @@ if __name__ == '__main__':
     parser.add_argument('functions', nargs='*', help='Functions to benchmark (defaults to all discovered).')
     parser.add_argument('--build-dir', default='build', help='Meson build directory containing benchmark executables.')
     parser.add_argument('--prefix', default=None, help='Force a specific executable prefix (e.g., dpdk). If omitted, prefix is auto-detected.')
-    parser.add_argument('--iterations', type=int, default=1000000, help='Number of iterations for benchmarks (default: 1000000)')
+    parser.add_argument('-i', '--iterations', type=int, default=1000000, help='Number of iterations for benchmarks (default: 1000000)')
     parser.add_argument('--csv', default=None, help='Path to CSV file for results. If omitted, a timestamped file is created in the current directory.')
 
     args = parser.parse_args()
@@ -259,7 +258,27 @@ if __name__ == '__main__':
                 continue
             benchmarks_to_run.append((prefix, func))
 
+    # First, run empty benchmarks to get baseline cycles
+    empty_cycles = {}
+    for prefix in prefixes:
+        if 'empty' in discover_functions(args.build_dir, prefix):
+            benchmark_full_config = get_benchmark_config(full_config, prefix, 'empty')
+            eal_args = benchmark_full_config.get("eal_args", [])
+            benchmark_args = ['-i', str(args.iterations)]
+            cmd_args = eal_args + ['--'] + benchmark_args
+            
+            rc, cycles, metadata, _out, _err = run_benchmark('empty', build_dir=args.build_dir, prefix=prefix, env=os.environ.copy(), case_info="Empty baseline")
+            if cycles is not None:
+                empty_cycles[prefix] = cycles
+                print(f"Empty benchmark for {prefix}: {cycles} cycles")
+            if rc != 0:
+                exit_code = rc
+
+    # Now run all other benchmarks
     for prefix, func in benchmarks_to_run:
+        if func == 'empty':  # Skip empty benchmarks as they were already run
+            continue
+            
         benchmark_full_config = get_benchmark_config(full_config, prefix, func)
         params_dict = benchmark_full_config.get("params", {})
         eal_args = benchmark_full_config.get("eal_args", [])
@@ -283,10 +302,22 @@ if __name__ == '__main__':
             cmd_args = eal_args + ['--'] + benchmark_args
             case_info = ", ".join(case_info_parts) if case_info_parts else "Default"
             
-            rc, cycles, metadata, _out, _err = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, env=os.environ.copy(), case_info=case_info)
+            # Set up environment
+            env = os.environ.copy()
+            
+            rc, cycles, metadata, stdout, stderr = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, env=env, case_info=case_info)
             
             if cycles is not None:
-                total_cycles = cycles * args.iterations
+                total_cycles = cycles  # cycles is already total cycles now
+                
+                # Calculate and display cycles per call if empty benchmark data is available
+                if prefix in empty_cycles and func != 'empty':
+                    empty_cycles_for_prefix = empty_cycles[prefix]
+                    if total_cycles > empty_cycles_for_prefix:
+                        net_cycles = total_cycles - empty_cycles_for_prefix
+                        cycles_per_call = net_cycles / args.iterations
+                        print(f"  → Cycles per call (net): {cycles_per_call:.2f}")
+                
                 # Merge metadata from benchmark with parameters
                 metadata.update(metadata_params)
                 metadata_json = json.dumps(metadata).replace('"', "'")

@@ -10,7 +10,7 @@
     "benchmarks": {
         "rte_memcpy": {
             "params": {
-                "size": [64, 256, 1024, 4096]
+                "size": [32, 128, 512, 2048]
             }
         },
         "rte_eth_tx_burst": {
@@ -19,9 +19,14 @@
                 "burst_size": [1, 2, 8, 32]
             }
         },
+        "rte_eth_rx_burst": {
+            "params": {
+                "burst_size": [1, 2, 4, 8, 32]
+            }
+        },
         "rte_raw_cksum": {
             "params": {
-                "pkt_size": [64, 256, 1024, 4096]
+                "pkt_size": [64, 128, 512, 2048]
             }
         },
         "rte_ipv4_cksum": {},
@@ -30,11 +35,7 @@
                 "pkt_size": [64, 256, 1024, 1472]
             }
         },
-        "rte_ipv4_phdr_cksum": {
-            "params": {
-                "pkt_size": [64, 256, 1024, 1472]
-            }
-        },
+        "rte_ipv4_phdr_cksum": {},
         "rte_cryptodev_sym_session_create_free": {},
         "rte_crypto_op_bulk_alloc_free": {
             "params": {
@@ -42,9 +43,16 @@
             }
         },
         "rte_crypto_op_attach_sym_session": {},
-        "rte_cryptodev_enqueue_dequeue_burst": {
+        "rte_cryptodev_enqueue_dequeue_burst_encrypt": {
             "params": {
-                "burst_size": [1, 2, 8, 32]
+                "burst_size": [1, 2, 8, 32],
+                "data_size": [32, 128, 512, 2048]
+            }
+        },
+        "rte_cryptodev_enqueue_dequeue_burst_decrypt": {
+            "params": {
+                "burst_size": [1, 2, 8, 32],
+                "data_size": [32, 128, 512, 2048]
             }
         }
     }

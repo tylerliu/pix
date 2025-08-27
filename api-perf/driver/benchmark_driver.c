@@ -24,9 +24,6 @@ const char *get_benchmark_param(const char *key) {
 // Defaults, override via command line args
 unsigned long long g_iterations = 1000000ULL;
 
-struct rte_mempool *mbuf_pool;
-struct rte_mbuf **bufs;
-
 static void parse_command_line_args(int argc, char **argv) {
     int separator_index = -1;
     for (int i = 1; i < argc; i++) {
@@ -68,23 +65,9 @@ static void parse_command_line_args(int argc, char **argv) {
 
 void init_dpdk(int argc, char **argv) {
     parse_command_line_args(argc, argv);
-
-    mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", 8191, 250, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
-    if (mbuf_pool == NULL)
-        rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
-
-    // Allocate bufs with a default size. Benchmarks that need a different size can re-allocate it.
-    bufs = calloc(32, sizeof(struct rte_mbuf *));
-    if (bufs == NULL) {
-        rte_exit(EXIT_FAILURE, "Cannot allocate bufs array for default burst size 32\n");
-    }
 }
 
 void cleanup_dpdk(void) {
-    if (bufs) {
-        free(bufs);
-        bufs = NULL;
-    }
     rte_eal_cleanup();
 }
 

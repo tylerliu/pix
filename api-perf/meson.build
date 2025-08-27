@@ -37,7 +37,8 @@ benchmark_configs = {
         'rte_cryptodev_sym_session_create_free',
         'rte_crypto_op_bulk_alloc_free',
         'rte_crypto_op_attach_sym_session',
-        'rte_cryptodev_enqueue_dequeue_burst'
+        'rte_cryptodev_enqueue_dequeue_burst_encrypt',
+        'rte_cryptodev_enqueue_dequeue_burst_decrypt'
     ]
 }
 generated_sources = []
