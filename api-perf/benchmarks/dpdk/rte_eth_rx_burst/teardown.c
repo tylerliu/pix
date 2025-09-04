@@ -4,5 +4,4 @@ for (unsigned int i = 0; i < burst_size; i++) {
 }
 
 // Print metadata
-printf("metadata: {'burst_size': %u, 'pkt_size': %u, 'total_packets_sent': %lu}\n", burst_size, pkt_size, result);
-
+printf("metadata: {'burst_size': %u, 'total_packets_received': %lu}\n", burst_size, result);

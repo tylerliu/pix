@@ -11,8 +11,3 @@ for (unsigned int j = 0; j < tx_count; j++) {
         rte_exit(EXIT_FAILURE, "Cannot re-clone mbuf %u\n", j);
     }
 }
-
-// Print metadata after the loop
-if (i == g_iterations - 1) {
-    printf("metadata: {'burst_size': %u, 'pkt_size': %u, 'total_packets_sent': %lu}\n", burst_size, pkt_size, result);
-}

@@ -44,6 +44,7 @@ def generate_benchmark(function_name, output_file, template_base_dir, benchmark_
     code = code.replace('// {{DPDK_HEADERS}}', dpdk_headers)
     code = code.replace('// {{BENCHMARK_TEARDOWN}}', benchmark_teardown)
     code = code.replace('// {{CLEANUP_INFLIGHT}}', cleanup_inflight)
+    code = code.replace('// {{WAIT_TIME_ACCUMULATE}}', '')
     code = code.replace('void run_benchmark()', 'void run_benchmark(void)')
 
 

@@ -5,5 +5,5 @@ if (rte_pktmbuf_alloc_bulk(mbuf_pool, bufs, burst_size) != 0) {
     rte_exit(EXIT_FAILURE, "Cannot allocate mbufs\n");
 }
 
-// Initialize a variable to accumulate total packets received
-unsigned long result = 0;
+// Initialize result variable (declared in headers.c)
+result = 0;

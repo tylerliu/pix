@@ -427,7 +427,7 @@ Optimizations applied:
         sys.exit(1)
 
     # Sudo warning only (no elevation) if any dpdk/cryptodev prefix is present
-    if hasattr(os, 'geteuid') and os.geteuid() != 0 and any(p in {'dpdk', 'cryptodev'} for p in prefixes):
+    if hasattr(os, 'geteuid') and os.geteuid() != 0 and any(p in {'dpdk', 'cryptodev', 'cryptodev_wait'} for p in prefixes):
         print("Warning: Not running as root. Many DPDK/cryptodev setups require root/sudo. This script will not elevate.", file=sys.stderr)
 
     exit_code = 0

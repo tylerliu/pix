@@ -62,5 +62,5 @@ for (unsigned int i = 0; i < burst_size; i++) {
 // Free the template mbuf
 //rte_pktmbuf_free(template_mbuf);
 
-// Initialize a variable to accumulate total packets sent
-unsigned long result = 0;
+// Initialize result variable (declared in headers.c)
+result = 0;
