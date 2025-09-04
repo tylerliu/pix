@@ -14,3 +14,6 @@ static struct rte_mbuf *dst_mbufs[256];
 // Per-op inputs
 static uint8_t ivs[256][MAX_AES_GCM_IV_LENGTH];
 
+// Global counter to track in-flight operations
+static volatile unsigned long long in_flight_ops = 0;
+

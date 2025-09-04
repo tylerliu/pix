@@ -125,6 +125,9 @@ void run_benchmark() {
 
     uint64_t total_cycles = end - start;
     printf("Total cycles: %lu\n", (unsigned long)total_cycles);
+    
+    // Clean up any remaining in-flight packets (not counted in cycles)
+    // {{CLEANUP_INFLIGHT}}
 }
 
 void teardown_benchmark() {

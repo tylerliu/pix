@@ -19,6 +19,7 @@ def generate_benchmark(function_name, output_file, template_base_dir, benchmark_
     setup_file = os.path.join(snippet_path, 'setup.c')
     headers_file = os.path.join(snippet_path, 'headers.c')
     teardown_file = os.path.join(snippet_path, 'teardown.c')
+    cleanup_file = os.path.join(snippet_path, 'cleanup.c')
 
     if not os.path.exists(call_file):
         raise ValueError(f"Snippet file not found for function: {function_name}")
@@ -27,6 +28,7 @@ def generate_benchmark(function_name, output_file, template_base_dir, benchmark_
     benchmark_setup = get_snippet_content(setup_file)
     dpdk_headers = get_snippet_content(headers_file)
     benchmark_teardown = get_snippet_content(teardown_file)
+    cleanup_inflight = get_snippet_content(cleanup_file)
 
     if function_name == "empty":
         benchmark_loop = '// No-op'
@@ -41,6 +43,7 @@ def generate_benchmark(function_name, output_file, template_base_dir, benchmark_
     code = code.replace('// {{BENCHMARK_SETUP}}', benchmark_setup)
     code = code.replace('// {{DPDK_HEADERS}}', dpdk_headers)
     code = code.replace('// {{BENCHMARK_TEARDOWN}}', benchmark_teardown)
+    code = code.replace('// {{CLEANUP_INFLIGHT}}', cleanup_inflight)
     code = code.replace('void run_benchmark()', 'void run_benchmark(void)')
 
 
