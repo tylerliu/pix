@@ -7,7 +7,182 @@ import csv
 import re
 import json
 import itertools
+import signal
+import atexit
 from datetime import datetime
+
+
+class BenchmarkRunner:
+    def __init__(self, cpu_core=3, verbose=False):
+        self.cpu_core = cpu_core
+        self.verbose = verbose
+        self.original_settings = {}
+        self.setup_completed = False
+        self.teardown_completed = False
+        
+        # Register cleanup on exit
+        atexit.register(self.teardown)
+        signal.signal(signal.SIGINT, self.signal_handler)
+        signal.signal(signal.SIGTERM, self.signal_handler)
+    
+    def signal_handler(self, signum, frame):
+        """Handle interrupt signals to ensure cleanup."""
+        print(f"\nReceived signal {signum}, cleaning up...")
+        self.teardown()
+        sys.exit(1)
+    
+    def get_current_settings(self):
+        """Get current CPU settings to restore later."""
+        try:
+            # Get current governor and frequency info
+            result = subprocess.run([
+                "cpupower", "-c", str(self.cpu_core), "frequency-info"
+            ], capture_output=True, text=True, check=True)
+            
+            # Parse governor from output
+            for line in result.stdout.split('\n'):
+                if 'current policy:' in line:
+                    # Extract governor from "The governor "X" may decide..."
+                    if 'governor "' in line:
+                        governor_start = line.find('governor "') + 9
+                        governor_end = line.find('"', governor_start)
+                        if governor_end > governor_start:
+                            governor = line[governor_start:governor_end]
+                            self.original_settings['governor'] = governor
+                            break
+            
+            print("✓ Captured current CPU settings for restoration")
+            
+        except subprocess.CalledProcessError as e:
+            print(f"⚠ Warning: Could not capture current settings: {e}")
+            # Set defaults
+            self.original_settings['governor'] = 'ondemand'
+    
+    def check_cpupower_support(self):
+        """Check which cpupower subcommands are available."""
+        supported_commands = {}
+        
+        # Check if frequency-set is supported
+        try:
+            result = subprocess.run([
+                "cpupower", "frequency-set", "--help"
+            ], capture_output=True, text=True, check=True)
+            supported_commands['frequency-set'] = True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            supported_commands['frequency-set'] = False
+        
+        # Check if idle-set is supported
+        try:
+            result = subprocess.run([
+                "cpupower", "idle-set", "--help"
+            ], capture_output=True, text=True, check=True)
+            supported_commands['idle-set'] = True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            supported_commands['idle-set'] = False
+        
+        return supported_commands
+    
+    def setup_cpu(self):
+        """Set CPU to performance mode and pin to specific core."""
+        print("Setting up CPU for benchmarking...")
+        
+        # Check what cpupower features are available
+        supported_commands = self.check_cpupower_support()
+        
+        # Capture current settings first
+        self.get_current_settings()
+        
+        # Print current settings before changing
+        print(f"Current CPU {self.cpu_core} settings:")
+        if 'governor' in self.original_settings:
+            print(f"  Governor: {self.original_settings['governor']}")
+        print()
+        
+        # Set CPU governor to performance (if supported)
+        if supported_commands.get('frequency-set', False):
+            try:
+                subprocess.run([
+                    "sudo", "cpupower", "-c", str(self.cpu_core), "frequency-set", 
+                    "-g", "performance"
+                ], check=True, capture_output=True)
+                print(f"✓ Set CPU {self.cpu_core} to performance mode")
+            except subprocess.CalledProcessError as e:
+                print(f"⚠ Warning: Could not set CPU governor: {e}")
+        else:
+            print("⚠ Note: CPU frequency control not available, skipping governor setting")
+        
+        # Disable CPU idle states for more consistent performance (if supported)
+        if supported_commands.get('idle-set', False):
+            try:
+                subprocess.run([
+                    "sudo", "cpupower", "-c", str(self.cpu_core), "idle-set", "-d", "0"
+                ], check=True, capture_output=True)
+                print("✓ Disabled CPU idle states")
+            except subprocess.CalledProcessError as e:
+                print(f"⚠ Warning: Could not disable CPU idle states: {e}")
+        else:
+            print("⚠ Note: CPU idle state control not available, skipping idle state setting")
+        
+        self.setup_completed = True
+    
+    def teardown(self):
+        """Restore original CPU settings."""
+        if not self.setup_completed or self.teardown_completed:
+            return
+        
+        self.teardown_completed = True
+        print("\nRestoring CPU settings...")
+        
+        # Restore governor (only if frequency-set was supported)
+        if 'governor' in self.original_settings:
+            try:
+                subprocess.run([
+                    "sudo", "cpupower", "-c", str(self.cpu_core), "frequency-set",
+                    "-g", self.original_settings['governor']
+                ], check=True, capture_output=True)
+                print(f"✓ Restored governor to {self.original_settings['governor']}")
+            except subprocess.CalledProcessError as e:
+                print(f"⚠ Warning: Could not restore governor: {e}")
+        
+        # Re-enable CPU idle states
+        try:
+            subprocess.run([
+                "sudo", "cpupower", "-c", str(self.cpu_core), "idle-set", "-e", "0"
+            ], check=True, capture_output=True)
+            print("✓ Re-enabled CPU idle states")
+        except subprocess.CalledProcessError:
+            pass  # Ignore if not supported
+        
+        print("✓ CPU settings restored")
+    
+    def warm_up(self, exe_path, cmd_args):
+        """Run executable once to warm up caches."""
+        if self.verbose:
+            print(f"Warming up {exe_path}...")
+        try:
+            # Create warm-up command with all the same parameters but fewer iterations
+            warm_up_args = []
+            i = 0
+            while i < len(cmd_args):
+                if cmd_args[i] == "-i" and i + 1 < len(cmd_args):
+                    # Replace iteration count with 10000 for warm-up
+                    warm_up_args.extend(["-i", "10000"])
+                    i += 2  # Skip both "-i" and the iteration count
+                else:
+                    warm_up_args.append(cmd_args[i])
+                    i += 1
+            
+            subprocess.run([
+                "taskset", "-c", str(self.cpu_core),
+                exe_path
+            ] + warm_up_args, check=True, capture_output=True)
+            if self.verbose:
+                print("✓ Warm-up completed")
+        except subprocess.CalledProcessError as e:
+            if self.verbose:
+                print(f"✗ Warm-up failed: {e}")
+            return False
+        return True
 
 
 def detect_and_explain_common_errors(stdout_text: str, stderr_text: str) -> None:
@@ -93,32 +268,6 @@ def discover_prefixes(build_dir: str) -> list[str]:
         sorted_prefixes = ['dpdk'] + [p for p in sorted_prefixes if p != 'dpdk']
     return sorted_prefixes
 
-def discover_prefixes(build_dir: str) -> list[str]:
-    if not os.path.isdir(build_dir):
-        return []
-    prefixes: set[str] = set()
-    try:
-        for entry in os.listdir(build_dir):
-            if entry.startswith('.'):
-                continue
-            if '_' not in entry:
-                continue
-            full = os.path.join(build_dir, entry)
-            if not os.path.isfile(full):
-                continue
-            if not os.access(full, os.X_OK):
-                continue
-            prefix = entry.split('_', 1)[0]
-            if prefix:
-                prefixes.add(prefix)
-    except FileNotFoundError:
-        return []
-    # Prefer dpdk first if present
-    sorted_prefixes = sorted(prefixes)
-    if 'dpdk' in prefixes:
-        sorted_prefixes = ['dpdk'] + [p for p in sorted_prefixes if p != 'dpdk']
-    return sorted_prefixes
-
 def choose_prefix_for_function(build_dir: str, function_name: str, candidate_prefixes: list[str]) -> str | None:
     # Prefer dpdk if present and the executable exists; otherwise first prefix with a match
     for prefix in candidate_prefixes:
@@ -164,15 +313,20 @@ def _parse_metadata(stdout_text: str) -> dict:
     return {}
 
 
-def run_benchmark(function_name: str, build_dir: str, prefix: str, env: dict[str, str] | None = None, case_info: str | None = None) -> tuple[int, float | None, dict, str, str]:
+def run_benchmark(function_name: str, build_dir: str, prefix: str, runner: BenchmarkRunner, cmd_args: list[str], env: dict[str, str] | None = None, case_info: str | None = None) -> tuple[int, float | None, dict, str, str]:
     exe_path = build_executable_path(build_dir, prefix, function_name)
 
     if not os.path.exists(exe_path):
         print(f"Executable not found: {exe_path}", file=sys.stderr)
         print("Make sure you have built the project with Meson before running this script.", file=sys.stderr)
-        return 1
+        return 1, None, {}, "", ""
 
-    cmd = [exe_path] + cmd_args
+    # Warm up the executable first
+    if not runner.warm_up(exe_path, cmd_args):
+        print(f"Warning: Warm-up failed for {function_name}", file=sys.stderr)
+
+    # Use taskset to pin to specific CPU core for consistent measurements
+    cmd = ["taskset", "-c", str(runner.cpu_core), exe_path] + cmd_args
 
     case_suffix = f" ({case_info})" if case_info else ""
     print(f"\n--- Running benchmark for {function_name}{case_suffix} ---")
@@ -182,7 +336,7 @@ def run_benchmark(function_name: str, build_dir: str, prefix: str, env: dict[str
         result = subprocess.run(cmd, capture_output=True, text=True, env=env)
     except FileNotFoundError:
         print(f"Failed to execute: {exe_path} (file not found)", file=sys.stderr)
-        return 1
+        return 1, None, {}, "", ""
 
     if result.returncode != 0:
         print("Error running benchmark:", file=sys.stderr)
@@ -199,16 +353,68 @@ def run_benchmark(function_name: str, build_dir: str, prefix: str, env: dict[str
         return 0, cycles, metadata, result.stdout, result.stderr
 
 
+def check_permissions():
+    """Check if script has proper permissions for accurate measurements."""
+    if hasattr(os, 'geteuid') and os.geteuid() == 0:  # Running as root
+        print("✓ Script is running with sudo privileges")
+        print("   This is recommended for accurate DPDK measurements")
+        print("   as it allows access to hardware resources and hugepages")
+        print()
+        return True
+    else:
+        print("⚠ Warning: Script is not running with sudo privileges")
+        print("   Many DPDK setups require root/sudo for:")
+        print("   - Hugepage allocation")
+        print("   - Device binding")
+        print("   - CPU frequency control")
+        print("   Solutions:")
+        print("   1. Run with sudo: sudo python3 run_benchmarks.py (recommended)")
+        print("   2. Ensure hugepages are pre-allocated")
+        print("   3. Pre-bind devices to DPDK drivers")
+        print("   Note: Some measurements may fail without proper permissions")
+        print()
+        return False
+
+
 if __name__ == '__main__':
     # Manually split sys.argv on '--' so that everything after it is passed to the executable
-    parser = argparse.ArgumentParser(description='Run pre-built API benchmarks.')
+    parser = argparse.ArgumentParser(
+        description='Run pre-built API benchmarks with CPU optimizations for accurate measurements.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s                                    # Run all benchmarks with optimizations
+  %(prog)s --verbose                          # Run with detailed output
+  %(prog)s --cpu-core 2 --iterations 5000000 # Use specific CPU core and iterations
+  %(prog)s rte_eth_rx_burst                   # Run specific function
+
+Optimizations applied:
+  - CPU governor set to performance mode
+  - CPU idle states disabled during benchmarking
+  - Process pinned to specific CPU core using taskset
+  - Warm-up runs to ensure consistent cache state
+  - Proper cleanup on interruption (Ctrl+C)
+  - Permission checks for DPDK requirements
+        """
+    )
     parser.add_argument('functions', nargs='*', help='Functions to benchmark (defaults to all discovered).')
     parser.add_argument('--build-dir', default='build', help='Meson build directory containing benchmark executables.')
     parser.add_argument('--prefix', default=None, help='Force a specific executable prefix (e.g., dpdk). If omitted, prefix is auto-detected.')
     parser.add_argument('-i', '--iterations', type=int, default=1000000, help='Number of iterations for benchmarks (default: 1000000)')
     parser.add_argument('--csv', default=None, help='Path to CSV file for results. If omitted, a timestamped file is created in the current directory.')
+    parser.add_argument('--cpu-core', type=int, default=3, help='CPU core to pin benchmarks to (default: 3)')
+    parser.add_argument('--verbose', action='store_true', help='Enable verbose output showing detailed setup and warm-up information')
 
     args = parser.parse_args()
+
+    # Check permissions first
+    check_permissions()
+
+    # Create benchmark runner
+    runner = BenchmarkRunner(cpu_core=args.cpu_core, verbose=args.verbose)
+    
+    # Set up CPU for optimal benchmarking
+    runner.setup_cpu()
 
     # Determine prefixes
     if args.prefix:
@@ -267,7 +473,7 @@ if __name__ == '__main__':
             benchmark_args = ['-i', str(args.iterations)]
             cmd_args = eal_args + ['--'] + benchmark_args
             
-            rc, cycles, metadata, _out, _err = run_benchmark('empty', build_dir=args.build_dir, prefix=prefix, env=os.environ.copy(), case_info="Empty baseline")
+            rc, cycles, metadata, _out, _err = run_benchmark('empty', build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=os.environ.copy(), case_info="Empty baseline")
             if cycles is not None:
                 empty_cycles[prefix] = cycles
                 print(f"Empty benchmark for {prefix}: {cycles} cycles")
@@ -305,7 +511,7 @@ if __name__ == '__main__':
             # Set up environment
             env = os.environ.copy()
             
-            rc, cycles, metadata, stdout, stderr = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, env=env, case_info=case_info)
+            rc, cycles, metadata, stdout, stderr = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=env, case_info=case_info)
             
             if cycles is not None:
                 total_cycles = cycles  # cycles is already total cycles now
