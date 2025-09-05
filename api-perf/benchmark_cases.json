@@ -3,9 +3,6 @@
         "cryptodev": {
             "eal_args": ["-a", "03:00.0,class=crypto,algo=1"]
         },
-        "cryptodev-wait": {
-            "eal_args": ["-a", "03:00.0,class=crypto,algo=1"]
-        },
         "dpdk": {
             "eal_args": ["-a", "auxiliary:mlx5_core.sf.4"]
         }
@@ -53,18 +50,6 @@
             }
         },
         "rte_cryptodev_enqueue_dequeue_burst_decrypt": {
-            "params": {
-                "burst_size": [1, 2, 8, 32],
-                "data_size": [32, 128, 512, 2048]
-            }
-        },
-        "rte_cryptodev_enqueue_wait_dequeue_burst_encrypt": {
-            "params": {
-                "burst_size": [1, 2, 8, 32],
-                "data_size": [32, 128, 512, 2048]
-            }
-        },
-        "rte_cryptodev_enqueue_wait_dequeue_burst_decrypt": {
             "params": {
                 "burst_size": [1, 2, 8, 32],
                 "data_size": [32, 128, 512, 2048]
