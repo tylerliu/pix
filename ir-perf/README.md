@@ -118,34 +118,19 @@ python3 ../run_benchmarks.py --no-analyze-latency
 
 ### DPA Backend Usage
 
-Run benchmarks using DPA telemetry:
+Build and run DPA benchmarks using CLI-based statistics collection:
 ```bash
-python3 ../run_benchmarks.py --backend dpa
+cd build
+cmake -DENABLE_DPA=ON .. && make -j && make dpa_benches -j
+
+# Run specific benches and collect stats
+python3 ../run_benchmarks.py --backend dpa --dpa-device mlx5_0 --dpa-sample-ms 1000 bench_arithmetic_add-imm
 ```
 
-DPA-specific options:
-```bash
-# Specify DPA device
-python3 ../run_benchmarks.py --backend dpa --dpa-device pci=0000:06:00.0
-
-# Custom sampling interval
-python3 ../run_benchmarks.py --backend dpa --dpa-sample-ms 500
-
-# Thread filtering
-python3 ../run_benchmarks.py --backend dpa --dpa-thread-filter "bench_.*"
-```
-
-### Complete DPA Example
-
-```bash
-# Run arithmetic benchmarks with DPA telemetry
-python3 ../run_benchmarks.py \
-  --backend dpa \
-  --dpa-device pci=0000:06:00.0 \
-  --dpa-sample-ms 1000 \
-  --verbose \
-  bench_arithmetic_add-imm bench_arithmetic_mul-imm
-```
+Notes:
+- The DPA backend converts existing `bench_*.ll` into DPA kernels, builds with dpacc,
+  runs a unified host, and uses `dpa-ps`/`dpa-statistics` to gather cycles/instructions.
+- API integration via `libdoca_telemetry_dpa` can be added later if needed.
 
 ## Benchmark Categories
 
@@ -300,5 +285,6 @@ This project is licensed under the same license as the parent repository.
 ## References
 
 - [LLVM IR Reference](https://llvm.org/docs/LangRef.html)
+- [DOCA DPA Statistics Tool](https://docs.nvidia.com/doca/sdk/doca+dpa+statistics+tool/index.html)
 - [DOCA Telemetry DPA Documentation](https://docs.nvidia.com/doca/)
 - [Linux perf Documentation](https://perf.wiki.kernel.org/)

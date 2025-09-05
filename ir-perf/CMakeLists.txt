@@ -39,6 +39,9 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 # Define template types
 set(TEMPLATE_TYPES arithmetic memory pointer fp-arithmetic conversion branching call alloca)
 
+# Track generated benchmark LL files for downstream consumption
+set(BENCH_LL_FILES)
+
 foreach(TEMPLATE_TYPE ${TEMPLATE_TYPES})
     # Find all snippet files for this template type
     file(GLOB SNIPPET_FILES "${CMAKE_CURRENT_SOURCE_DIR}/snippets/${TEMPLATE_TYPE}/*.ll")
@@ -60,19 +63,24 @@ foreach(TEMPLATE_TYPE ${TEMPLATE_TYPES})
             DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/templates/${TEMPLATE_TYPE}.ll ${SNIPPET_FILE}
         )
 
-        # Compile .ll to .o
-        add_custom_command(
-            OUTPUT ${GEN_OBJ}
-            COMMAND ${LLVMLLC} -O0 -filetype=obj -o ${GEN_OBJ} ${GEN_LL}
-            DEPENDS ${GEN_LL}
-        )
+        list(APPEND BENCH_LL_FILES ${GEN_LL})
 
-        # Add executable for each snippet
-        add_executable(${EXE_NAME} bench-driver.c ${GEN_OBJ})
-        
-        # Link against math library only for frem operations
-        if(SNIPPET_NAME MATCHES "frem")
-            target_link_libraries(${EXE_NAME} m)
+        # For DPA builds, we only need the generated LL; skip host binaries
+        if (NOT ENABLE_DPA)
+            # Compile .ll to .o
+            add_custom_command(
+                OUTPUT ${GEN_OBJ}
+                COMMAND ${LLVMLLC} -O0 -filetype=obj -o ${GEN_OBJ} ${GEN_LL}
+                DEPENDS ${GEN_LL}
+            )
+
+            # Add executable for each snippet
+            add_executable(${EXE_NAME} bench-driver.c ${GEN_OBJ})
+            
+            # Link against math library only for frem operations
+            if(SNIPPET_NAME MATCHES "frem")
+                target_link_libraries(${EXE_NAME} m)
+            endif()
         endif()
     endforeach()
 endforeach()
@@ -103,43 +111,44 @@ set(LOAD_BENCHMARKS_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/load_benchmarks.cmake")
 if(EXISTS ${LOAD_BENCHMARKS_CMAKE})
     include(${LOAD_BENCHMARKS_CMAKE})
     
-    # Create executables for each generated benchmark
+    # Create executables for each generated benchmark unless building DPA
+    if (NOT ENABLE_DPA)
+        foreach(BENCHMARK_FILE ${LOAD_BENCHMARK_FILES})
+            get_filename_component(BENCH_NAME ${BENCHMARK_FILE} NAME_WE)
+            set(GEN_LL "${CMAKE_CURRENT_BINARY_DIR}/${BENCHMARK_FILE}")
+            set(GEN_OBJ "${CMAKE_CURRENT_BINARY_DIR}/${BENCH_NAME}.o")
+            
+            # Compile .ll to .o
+            add_custom_command(
+                OUTPUT ${GEN_OBJ}
+                COMMAND ${LLVMLLC} -O0 -filetype=obj -o ${GEN_OBJ} ${GEN_LL}
+                DEPENDS ${GEN_LL}
+            )
+            
+            # Add executable with bench_memory_ prefix
+            add_executable(bench_memory_${BENCH_NAME} bench-driver.c ${GEN_OBJ})
+        endforeach()
+    endif()
+
+    # Also track generated load benchmark LL files
     foreach(BENCHMARK_FILE ${LOAD_BENCHMARK_FILES})
-        get_filename_component(BENCH_NAME ${BENCHMARK_FILE} NAME_WE)
-        set(GEN_LL "${CMAKE_CURRENT_BINARY_DIR}/${BENCHMARK_FILE}")
-        set(GEN_OBJ "${CMAKE_CURRENT_BINARY_DIR}/${BENCH_NAME}.o")
-        
-        # Compile .ll to .o
-        add_custom_command(
-            OUTPUT ${GEN_OBJ}
-            COMMAND ${LLVMLLC} -O0 -filetype=obj -o ${GEN_OBJ} ${GEN_LL}
-            DEPENDS ${GEN_LL}
-        )
-        
-        # Add executable with bench_memory_ prefix
-        add_executable(bench_memory_${BENCH_NAME} bench-driver.c ${GEN_OBJ})
+        list(APPEND BENCH_LL_FILES "${CMAKE_CURRENT_BINARY_DIR}/${BENCHMARK_FILE}")
     endforeach()
 else()
     message(STATUS "Load benchmark list not found. Benchmarks may not have been generated.")
 endif()
 
+# Expose LL list as a target and cache variable for subdirectories
+if (BENCH_LL_FILES)
+    add_custom_target(ir_bench_ll ALL DEPENDS ${BENCH_LL_FILES})
+    set(BENCH_LL_FILES "${BENCH_LL_FILES}" CACHE INTERNAL "All generated benchmark LL files")
+endif()
+
 ################################################################################
-# Optional: DOCA Telemetry DPA helper
+# Optional: DPA backend
 ################################################################################
 
-option(ENABLE_DPA "Enable building DPA telemetry helper if DOCA is available" ON)
+option(ENABLE_DPA "Enable DPA backend build" ON)
 if (ENABLE_DPA)
-    find_library(DOCA_TELEMETRY_DPA_LIB NAMES doca_telemetry_dpa)
-    find_path(DOCA_INCLUDE_DIR NAMES doca_telemetry_dpa.h
-        HINTS /opt/mellanox/doca/include /usr/include /usr/local/include)
-
-    if (DOCA_TELEMETRY_DPA_LIB AND DOCA_INCLUDE_DIR)
-        message(STATUS "Found DOCA Telemetry DPA: lib=${DOCA_TELEMETRY_DPA_LIB} include=${DOCA_INCLUDE_DIR}")
-        add_executable(dpa_telemetry_helper dpa_telemetry_helper.c)
-        target_include_directories(dpa_telemetry_helper PRIVATE ${DOCA_INCLUDE_DIR})
-        target_link_libraries(dpa_telemetry_helper ${DOCA_TELEMETRY_DPA_LIB})
-        target_compile_definitions(dpa_telemetry_helper PRIVATE HAVE_DOCA_TELEMETRY_DPA=1)
-    else()
-        message(STATUS "DOCA Telemetry DPA not found. 'dpa_telemetry_helper' will not be built.")
-    endif()
+    add_subdirectory(dpa)
 endif()
