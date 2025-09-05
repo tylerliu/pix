@@ -39,11 +39,6 @@ benchmark_configs = {
         'rte_crypto_op_attach_sym_session',
         'rte_cryptodev_enqueue_dequeue_burst_encrypt',
         'rte_cryptodev_enqueue_dequeue_burst_decrypt'
-    ],
-    'cryptodev-wait': [
-        'empty',
-        'rte_cryptodev_enqueue_wait_dequeue_burst_encrypt',
-        'rte_cryptodev_enqueue_wait_dequeue_burst_decrypt'
     ]
 }
 generated_sources = []
