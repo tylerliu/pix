@@ -2,8 +2,9 @@
 set -e
 
 NF="${PWD##*/}"
-METRICS=${1-x86}
+METRICS=${1-llvm}
 TEST=${2:-all}
+LATENCY_DIR=${3:-$(dirname "$0")/../../../}
 
 if ! [[ "$NF" =~ ^(vignat|bridge|vigbalancer|lpm|vigpol|vigfw)$ ]]; then
   echo "Unsupported NF: $NF"
@@ -42,7 +43,7 @@ pushd ../../perf-contracts
 popd 
 
 pushd klee-last
-	$KLEE_INCLUDE/../scripts/process-traces.sh . verify-dpdk $METRICS Num_bucket_traversals 1 Num_hash_collisions 0  expired_flows 0 
+	$KLEE_INCLUDE/../scripts/process-traces.sh . verify-dpdk $METRICS "$LATENCY_DIR" Num_bucket_traversals 1 Num_hash_collisions 0  expired_flows 0 
 popd
 
 export MAX_PERF=1000 && export MIN_PERF=100
