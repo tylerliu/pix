@@ -302,11 +302,24 @@ source_install_llvm()
 
 	cd "$BUILDDIR"
 
-	# TODO: Optimize. Currently we clone and build from scratch even if source is present but hasn't been built
+	# Optimized: Use sparse checkout to download only needed folders
 	if [ ! -f $BUILDDIR/llvm/.version ] || [ "$(cat $BUILDDIR/llvm/.version)" != "$LLVM_RELEASE" ];
 	then
-		git clone --branch llvmorg-$LLVM_RELEASE --depth 1  \
-		https://github.com/llvm/llvm-project "$BUILDDIR/llvm-project"
+		# Create a new repository with sparse checkout
+		git init "$BUILDDIR/llvm-project"
+		cd "$BUILDDIR/llvm-project"
+		git remote add origin https://github.com/llvm/llvm-project
+		git config core.sparseCheckout true
+		
+		# Configure sparse checkout to only include llvm and clang folders
+		echo "llvm/*" > .git/info/sparse-checkout
+		echo "clang/*" >> .git/info/sparse-checkout
+		
+		# Fetch and checkout only the specified branch and folders
+		git fetch --depth 1 origin llvmorg-$LLVM_RELEASE
+		git checkout -b llvmorg-$LLVM_RELEASE origin/llvmorg-$LLVM_RELEASE
+		
+		# Move folders to expected locations
 		mv "$BUILDDIR/llvm-project/llvm" "$BUILDDIR/llvm"
 		mv "$BUILDDIR/llvm-project/clang" "$BUILDDIR/llvm/tools/clang"
 		rm -rf "$BUILDDIR/llvm-project"
