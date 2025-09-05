@@ -117,7 +117,6 @@ void setup_benchmark() {
 void run_benchmark() {
     uint64_t start, end;
     total_poll_cycles = 0;  // Reset for this benchmark run
-    volatile uint64_t result = 0;
 
     start = rte_rdtsc();
     for (unsigned long long i = 0; i < g_iterations; ++i) {
