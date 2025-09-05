@@ -70,3 +70,123 @@ Notes:
     *   `headers.c` (optional): This file can contain any additional headers that need to be included in the generated C source file.
     *   `teardown.c` (optional): This file can contain any teardown code that needs to be run after the benchmark loop.
 *   **Code Style:** The C code follows a consistent style, which should be maintained when adding new code.
+
+# Performance Analysis
+
+The project includes a comprehensive latency analysis script that processes benchmark results and generates performance models.
+
+## Analysis Script
+
+Use `analyze_latency.py` to analyze CSV results from benchmark runs:
+
+```bash
+python3 analyze_latency.py [--csv-dir .] [--output function_latency_map.json] [--polling-output polling_analysis.json] [--correlations correlations.json]
+```
+
+## Output Files
+
+The analysis generates three complementary JSON files:
+
+### 1. `function_latency_map.json` - Performance Model
+Clean mapping of each function to its base latency and significant parameter coefficients:
+
+```json
+{
+  "rte_eth_rx_burst": {
+    "base_latency_cycles": 15.2,
+    "parameters": {
+      "burst_size": 2.45,
+      "packets_received": -0.0001
+    }
+  }
+}
+```
+
+**Interpretation:**
+- `base_latency_cycles`: Base latency when all parameters are at their reference values
+- `parameters`: How much latency changes per unit change in each parameter
+- Only statistically significant parameters (p < 0.05) are included
+
+### 2. `correlations.json` - Statistical Analysis
+Complete statistical analysis for all parameters:
+
+```json
+{
+  "rte_eth_rx_burst": {
+    "burst_size": {
+      "coefficient": 2.45,
+      "intercept": 10.1,
+      "correlation": 0.89,
+      "p_value": 0.001,
+      "significant": true,
+      "n_samples": 9
+    }
+  }
+}
+```
+
+**Fields:**
+- `coefficient`: Linear regression slope (cycles per unit parameter change)
+- `intercept`: Y-intercept from individual regression
+- `correlation`: Pearson correlation coefficient (-1 to 1)
+- `p_value`: Statistical significance (p < 0.05 is significant)
+- `significant`: Boolean indicating statistical significance
+- `n_samples`: Number of data points used
+
+### 3. `polling_analysis.json` - Polling Overhead
+Analysis of polling/wait time for functions that use it, with regression coefficients and correlation analysis:
+
+```json
+{
+  "rte_cryptodev_enqueue_wait_dequeue_burst_encrypt": {
+    "base_poll_cycles_per_iteration": 1200.45,
+    "parameters": {
+      "burst_size": 12.5
+    },
+    "correlations": {
+      "burst_size": {
+        "coefficient": 12.5,
+        "intercept": 1200.45,
+        "correlation": 0.89,
+        "p_value": 0.001,
+        "significant": true,
+        "n_samples": 16
+      }
+    },
+    "std_poll_cycles_per_iteration": 145.83,
+    "n_measurements": 16
+  }
+}
+```
+
+**Interpretation:**
+- `base_poll_cycles_per_iteration`: Base polling time when parameters are at reference values
+- `parameters`: How much polling time changes per unit change in each parameter (significant only)
+- `correlations`: Complete statistical analysis for all parameters (significant and non-significant)
+- Only statistically significant parameters (p < 0.05) are included in `parameters`
+- Additional statistics show the distribution of polling times
+
+## Analysis Methodology
+
+The analysis uses a two-step approach:
+
+1. **Individual Significance Testing**: Tests each parameter individually using linear regression to determine statistical significance (p < 0.05)
+
+2. **Multivariate Linear Regression**: Performs multivariate linear regression using only the significant parameters to get accurate coefficients that account for parameter interactions
+
+## Benchmark Types
+
+### Standard Benchmarks (`dpdk`, `cryptodev`)
+- Measure actual function performance
+- Include metadata about operation parameters (burst_size, data_size, etc.)
+- Results show per-operation latency
+
+### Wait-Based Benchmarks (`cryptodev-wait`)
+- Use polling loops instead of fixed wait times
+- Measure actual crypto work time, excluding polling overhead
+- Include polling time analysis in separate file
+- More realistic performance measurement
+
+### Data Filtering
+- Automatically filters out invalid measurements (e.g., rx_burst with 0 packets when network traffic is expected)
+- Preserves baseline measurements (e.g., rx_burst with 0 packets when no network traffic is configured)
