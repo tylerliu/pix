@@ -17,6 +17,7 @@ static struct rte_cryptodev_sym_session *enc_session;
 static struct rte_cryptodev_sym_session *dec_session;
 static struct rte_mempool *crypto_op_pool;
 static struct rte_mempool *session_pool;
+static uint64_t total_poll_cycles = 0;
 
 // Crypto constants
 #define AES128_KEY_LENGTH 16
@@ -54,7 +55,7 @@ void setup_cryptodev() {
     struct rte_cryptodev_config config = {
         .nb_queue_pairs = 1,
         .socket_id = rte_socket_id(),
-        .ff_disable = RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO | RTE_CRYPTODEV_FF_SECURITY,
+        .ff_disable = RTE_CRYPTODEV_FF_SECURITY,
     };
     if (rte_cryptodev_configure(cdev_id, &config) < 0) {
         rte_exit(EXIT_FAILURE, "Failed to configure cryptodev %u\n", cdev_id);
@@ -115,19 +116,20 @@ void setup_benchmark() {
 
 void run_benchmark() {
     uint64_t start, end;
+    total_poll_cycles = 0;  // Reset for this benchmark run
     volatile uint64_t result = 0;
 
     start = rte_rdtsc();
     for (unsigned long long i = 0; i < g_iterations; ++i) {
         // {{BENCHMARK_LOOP}}
+        uint64_t start_rdtsc = rte_rdtsc();
+        rte_pause(); // a pause to not overload the core. 
+        total_poll_cycles += rte_rdtsc() - start_rdtsc;
     }
     end = rte_rdtsc();
 
-    uint64_t total_cycles = end - start;
+    uint64_t total_cycles = end - start - total_poll_cycles;
     printf("Total cycles: %lu\n", (unsigned long)total_cycles);
-    
-    // Clean up any remaining in-flight packets (not counted in cycles)
-    // {{CLEANUP_INFLIGHT}}
 }
 
 void teardown_benchmark() {

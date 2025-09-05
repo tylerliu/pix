@@ -1,1 +1,1 @@
-// No headers needed for empty benchmark
+// No variables needed for empty benchmark
