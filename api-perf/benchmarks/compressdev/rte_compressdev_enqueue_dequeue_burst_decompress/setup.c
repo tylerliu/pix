@@ -1,3 +1,14 @@
+// Define constants
+#define MBUF_DATA_SIZE 65536  // Large mbuf size for compression data
+#define MBUF_POOL_SIZE 8192
+#define MBUF_CACHE_SIZE 128
+
+// Declare variables
+unsigned int burst_size;
+struct rte_comp_op *ops[32];  // Max burst size
+struct rte_mbuf *mbufs[32];   // Max burst size
+struct rte_mempool *mbuf_pool = NULL;
+
 const char* burst_size_str = get_benchmark_param("burst_size");
 burst_size = burst_size_str ? (unsigned int)strtoul(burst_size_str, NULL, 10) : 32;
 
