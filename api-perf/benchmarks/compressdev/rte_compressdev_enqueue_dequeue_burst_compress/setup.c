@@ -57,6 +57,8 @@ if (strcmp(checksum, "crc32") == 0) {
     comp_xform.compress.chksum = RTE_COMP_CHECKSUM_ADLER32;
 } else if (strcmp(checksum, "xxhash32") == 0) {
     comp_xform.compress.chksum = RTE_COMP_CHECKSUM_XXHASH32;
+} else if (strcmp(checksum, "combined") == 0) {
+    comp_xform.compress.chksum = RTE_COMP_CHECKSUM_CRC32_ADLER32; 
 } else {
     comp_xform.compress.chksum = RTE_COMP_CHECKSUM_NONE;
 }

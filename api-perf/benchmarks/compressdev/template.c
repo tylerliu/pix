@@ -62,6 +62,14 @@ void setup_compressdev() {
         rte_exit(EXIT_FAILURE, "Failed to start compression device\n");
     }
 
+    const struct rte_compressdev_capabilities *cap 
+	 			= rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+    if (cap == NULL) {
+        rte_exit(EXIT_FAILURE, "Failed to get compression device capabilities\n");
+    } else {
+        printf("Compression device capabilities: %p\n", cap->window_size.max);
+    }
+
     // Setup compression transform
     struct rte_comp_xform comp_xform = {
         .type = RTE_COMP_COMPRESS,

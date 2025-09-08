@@ -78,7 +78,8 @@
                     {"algorithm": "lz4", "checksum": "xxhash32", "huffman": null},
                     {"algorithm": "null", "checksum": "none", "huffman": null},
                     {"algorithm": "null", "checksum": "crc32", "huffman": null},
-                    {"algorithm": "null", "checksum": "adler32", "huffman": null}
+                    {"algorithm": "null", "checksum": "adler32", "huffman": null},
+                    {"algorithm": "null", "checksum": "combined", "huffman": null}
                 ]
             }
         },
@@ -96,7 +97,8 @@
                     {"algorithm": "lz4", "checksum": "xxhash32", "huffman": null},
                     {"algorithm": "null", "checksum": "none", "huffman": null},
                     {"algorithm": "null", "checksum": "crc32", "huffman": null},
-                    {"algorithm": "null", "checksum": "adler32", "huffman": null}
+                    {"algorithm": "null", "checksum": "adler32", "huffman": null},
+                    {"algorithm": "null", "checksum": "combined", "huffman": null}
                 ]
             }
         }
