@@ -39,6 +39,13 @@ benchmark_configs = {
         'rte_crypto_op_attach_sym_session',
         'rte_cryptodev_enqueue_dequeue_burst_encrypt',
         'rte_cryptodev_enqueue_dequeue_burst_decrypt'
+    ],
+    'compressdev': [
+        'empty',
+        'rte_compressdev_private_xform_create_free',
+        'rte_comp_op_bulk_alloc_free',
+        'rte_compressdev_enqueue_dequeue_burst_compress',
+        'rte_compressdev_enqueue_dequeue_burst_decompress'
     ]
 }
 generated_sources = []
