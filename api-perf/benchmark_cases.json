@@ -64,25 +64,6 @@
                 "bulk_size": [1, 2, 8, 32]
             }
         },
-        "rte_compressdev_enqueue_dequeue_burst_compress": {
-            "params": {
-                "burst_size": [1, 2, 8, 32],
-                "data_size": [32, 256, 2048, 32768],
-                "window_size": [1024, 4096, 16384]
-            },
-            "grouped_params": {
-                "algorithm_config": [
-                    {"algorithm": "deflate", "checksum": "none", "huffman": "fixed"},
-                    {"algorithm": "deflate", "checksum": "none", "huffman": "dynamic"},
-                    {"algorithm": "lz4", "checksum": "none", "huffman": null},
-                    {"algorithm": "lz4", "checksum": "xxhash32", "huffman": null},
-                    {"algorithm": "null", "checksum": "none", "huffman": null},
-                    {"algorithm": "null", "checksum": "crc32", "huffman": null},
-                    {"algorithm": "null", "checksum": "adler32", "huffman": null},
-                    {"algorithm": "null", "checksum": "combined", "huffman": null}
-                ]
-            }
-        },
         "rte_compressdev_enqueue_dequeue_burst_decompress": {
             "params": {
                 "burst_size": [1, 2, 8, 32],

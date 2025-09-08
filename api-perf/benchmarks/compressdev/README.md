@@ -74,25 +74,16 @@ The framework automatically tests all valid combinations:
 ## Hardware Limitations
 
 ### MLX5 Algorithm Support
-Based on the [MLX5 compression driver documentation](https://doc.dpdk.org/guides/compressdevs/mlx5.html), the following limitations apply:
-
-**BlueField-2:**
-- ✅ DEFLATE algorithm supported
-- ✅ NULL algorithm supported  
-- ❌ LZ4 algorithm **not supported**
-- ❌ Compress operation **not supported** (decompress only)
+Based on the [MLX5 compression driver documentation](https://doc.dpdk.org/guides/compressdevs/mlx5.html), the following limitations for Bluefield-3:
 
 **BlueField-3:**
 - ✅ DEFLATE algorithm supported
 - ✅ LZ4 algorithm supported
 - ✅ NULL algorithm supported
 - ❌ Compress operation **not supported** (decompress only)
-
-**General MLX5 Limitations:**
 - ❌ Scatter-Gather operations not supported
 - ❌ SHA operations not supported
 - ❌ Stateful compression not supported
-- ❌ Non-compressed block not supported in compress (supported in decompress)
 
 ### MLX5 Stateful API Support
 **Important**: MLX5 compression devices do not support the stateful compression API. Therefore, the following functions are **not tested** in these benchmarks:

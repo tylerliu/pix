@@ -98,18 +98,6 @@ void setup_compressdev() {
         rte_exit(EXIT_FAILURE, "Failed to start compression device\n");
     }
 
-    // Setup compression transform
-    struct rte_comp_xform comp_xform = {
-        .type = RTE_COMP_COMPRESS,
-        .compress = {
-            .algo = RTE_COMP_ALGO_DEFLATE,
-            .deflate.huffman = RTE_COMP_HUFFMAN_FIXED,
-            .level = COMPRESS_LEVEL,
-            .window_size = COMPRESS_WINDOW_SIZE,
-            .chksum = RTE_COMP_CHECKSUM_CRC32,
-        }
-    };
-
     struct rte_comp_xform decomp_xform = {
         .type = RTE_COMP_DECOMPRESS,
         .decompress = {
@@ -119,9 +107,6 @@ void setup_compressdev() {
     };
 
     // Create private xforms
-    if (rte_compressdev_private_xform_create(cdev_id, &comp_xform, &comp_private_xform) < 0) {
-        rte_exit(EXIT_FAILURE, "Failed to create compression private xform\n");
-    }
     if (rte_compressdev_private_xform_create(cdev_id, &decomp_xform, &decomp_private_xform) < 0) {
         rte_exit(EXIT_FAILURE, "Failed to create decompression private xform\n");
     }
