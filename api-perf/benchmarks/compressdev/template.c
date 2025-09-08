@@ -52,8 +52,11 @@ void setup_compressdev() {
     }
 #pragma GCC diagnostic pop
 
-    // Setup queue pair - use NULL for default configuration
-    if (rte_compressdev_queue_pair_setup(cdev_id, 0, NULL, rte_socket_id()) < 0) {
+    // Setup queue pair with proper configuration
+    struct rte_compressdev_qp_conf qp_conf = {
+        .max_inflight_ops = 128
+    };
+    if (rte_compressdev_queue_pair_setup(cdev_id, 0, &qp_conf, rte_socket_id()) < 0) {
         rte_exit(EXIT_FAILURE, "Failed to setup queue pair\n");
     }
 
