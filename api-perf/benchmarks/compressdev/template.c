@@ -33,7 +33,7 @@ void setup_compressdev() {
 
     // Create compression operation pool
     comp_op_pool = rte_comp_op_pool_create("comp_op_pool", 
-                                         8192, 128, rte_socket_id());
+                                         8192, 128, 0, rte_socket_id());
     if (comp_op_pool == NULL) {
         rte_exit(EXIT_FAILURE, "Failed to create compression operation pool\n");
     }
@@ -45,15 +45,15 @@ void setup_compressdev() {
         .nb_queue_pairs = 1,
         .socket_id = rte_socket_id(),
     };
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     if (rte_compressdev_configure(cdev_id, &config) < 0) {
         rte_exit(EXIT_FAILURE, "Failed to configure compressdev %u\n", cdev_id);
     }
+#pragma GCC diagnostic pop
 
-    // Setup queue pair
-    struct rte_compressdev_qp_conf qp_conf = {
-        .nb_descriptors = 128
-    };
-    if (rte_compressdev_queue_pair_setup(cdev_id, 0, &qp_conf, rte_socket_id()) < 0) {
+    // Setup queue pair - use NULL for default configuration
+    if (rte_compressdev_queue_pair_setup(cdev_id, 0, NULL, rte_socket_id()) < 0) {
         rte_exit(EXIT_FAILURE, "Failed to setup queue pair\n");
     }
 
