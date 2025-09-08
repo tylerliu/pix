@@ -39,8 +39,7 @@ static void print_compressdev_capabilities(uint8_t dev_id) {
         printf("  Algo=%s\n", algos[i].label);
         printf("    window_size log2: min=%u max=%u\n",
                (unsigned)cap->window_size.min, (unsigned)cap->window_size.max);
-        printf("    checksum supp: none=%d adler32=%d crc32=%d xxhash32=%d both=%d\n",
-               !!(cap->comp_feature_flags & RTE_COMP_FF_CHKSUM_NONE),
+        printf("    checksum supp: adler32=%d crc32=%d xxhash32=%d both=%d\n",
                !!(cap->comp_feature_flags & RTE_COMP_FF_ADLER32_CHECKSUM),
                !!(cap->comp_feature_flags & RTE_COMP_FF_CRC32_CHECKSUM),
                !!(cap->comp_feature_flags & RTE_COMP_FF_XXHASH32_CHECKSUM),
