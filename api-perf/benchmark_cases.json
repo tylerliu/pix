@@ -58,7 +58,21 @@
                 "data_size": [32, 256, 2048, 32768]
             }
         },
-        "rte_compressdev_private_xform_create_free": {},
+        "rte_compressdev_private_xform_create_free": {
+            "grouped_params": {
+                "algorithm_config": [
+                    {"algorithm": "deflate", "checksum": "none"},
+                    {"algorithm": "deflate", "checksum": "crc32"},
+                    {"algorithm": "deflate", "checksum": "adler32"},
+                    {"algorithm": "lz4", "checksum": "none"},
+                    {"algorithm": "lz4", "checksum": "xxhash32"},
+                    {"algorithm": "null", "checksum": "none"},
+                    {"algorithm": "null", "checksum": "crc32"},
+                    {"algorithm": "null", "checksum": "adler32"},
+                    {"algorithm": "null", "checksum": "combined"}
+                ]
+            }
+        },
         "rte_comp_op_bulk_alloc_free": {
             "params": {
                 "bulk_size": [1, 2, 8, 32]

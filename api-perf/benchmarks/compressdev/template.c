@@ -20,6 +20,15 @@ static uint64_t total_poll_cycles = 0;
 #define COMPRESS_LEVEL 6
 #define COMPRESS_WINDOW_SIZE 15
 
+// Global xform used by benchmarks (device supports decompression only)
+struct rte_comp_xform comp_xform = {
+	.type = RTE_COMP_DECOMPRESS,
+	.decompress = {
+		.algo = RTE_COMP_ALGO_DEFLATE,
+		.chksum = RTE_COMP_CHECKSUM_CRC32,
+	}
+};
+
 static void print_compressdev_capabilities(uint8_t dev_id) {
     const char *name = rte_compressdev_name_get(dev_id);
     printf("compressdev %u name=%s\n", (unsigned)dev_id, name ? name : "<unknown>");
@@ -98,16 +107,8 @@ void setup_compressdev() {
         rte_exit(EXIT_FAILURE, "Failed to start compression device\n");
     }
 
-    struct rte_comp_xform decomp_xform = {
-        .type = RTE_COMP_DECOMPRESS,
-        .decompress = {
-            .algo = RTE_COMP_ALGO_DEFLATE,
-            .chksum = RTE_COMP_CHECKSUM_CRC32,
-        }
-    };
-
     // Create private xforms
-    if (rte_compressdev_private_xform_create(cdev_id, &decomp_xform, &decomp_private_xform) < 0) {
+    if (rte_compressdev_private_xform_create(cdev_id, &comp_xform, &decomp_private_xform) < 0) {
         rte_exit(EXIT_FAILURE, "Failed to create decompression private xform\n");
     }
 }
