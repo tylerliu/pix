@@ -1,14 +1,3 @@
-// Define constants
-#define MBUF_DATA_SIZE 65536  // Large mbuf size for compression data
-#define MBUF_POOL_SIZE 8192
-#define MBUF_CACHE_SIZE 128
-
-// Declare variables
-unsigned int burst_size;
-struct rte_comp_op *ops[32];  // Max burst size
-struct rte_mbuf *mbufs[32];   // Max burst size
-struct rte_mempool *mbuf_pool = NULL;
-
 const char* burst_size_str = get_benchmark_param("burst_size");
 burst_size = burst_size_str ? (unsigned int)strtoul(burst_size_str, NULL, 10) : 32;
 
@@ -21,11 +10,11 @@ if (data_size > MBUF_DATA_SIZE) {
 
 // Algorithm parameter: deflate, lz4, null
 const char* algorithm_str = get_benchmark_param("algorithm");
-const char* algorithm = algorithm_str ? algorithm_str : "deflate";
+algorithm = algorithm_str ? algorithm_str : "deflate";
 
 // Checksum parameter: none, crc32, adler32, xxhash32
 const char* checksum_str = get_benchmark_param("checksum");
-const char* checksum = checksum_str ? checksum_str : "none";
+checksum = checksum_str ? checksum_str : "none";
 
 // Window size parameter: 1024, 2048, 4096, 8192, 16384, 32768
 const char* window_size_str = get_benchmark_param("window_size");
@@ -59,7 +48,6 @@ if (strcmp(checksum, "crc32") == 0) {
 }
 
 // Create new private xform for this specific configuration
-void *new_decomp_private_xform;
 if (rte_compressdev_private_xform_create(cdev_id, &decomp_xform, &new_decomp_private_xform) < 0) {
     rte_exit(EXIT_FAILURE, "Failed to create decompression private xform for algorithm %s", algorithm);
 }
@@ -103,7 +91,7 @@ for (unsigned int i = 0; i < burst_size; i++) {
     op->src.offset = 0;
     op->src.length = data_size;
     op->dst.offset = 0;
-    op->dst.length = 0; // Will be set by device
+    // Note: dst.length will be set by the device after decompression
     
     // Set private xform in the operation
     op->private_xform = new_decomp_private_xform;

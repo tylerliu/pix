@@ -10,11 +10,11 @@ if (data_size > MBUF_DATA_SIZE) {
 
 // Algorithm parameter: deflate, lz4, null
 const char* algorithm_str = get_benchmark_param("algorithm");
-const char* algorithm = algorithm_str ? algorithm_str : "deflate";
+algorithm = algorithm_str ? algorithm_str : "deflate";
 
 // Checksum parameter: none, crc32, adler32, xxhash32
 const char* checksum_str = get_benchmark_param("checksum");
-const char* checksum = checksum_str ? checksum_str : "none";
+checksum = checksum_str ? checksum_str : "none";
 
 // Huffman parameter for DEFLATE: fixed, dynamic
 const char* huffman_str = get_benchmark_param("huffman");
@@ -56,7 +56,6 @@ if (strcmp(checksum, "crc32") == 0) {
 }
 
 // Create new private xform for this specific configuration
-void *new_comp_private_xform;
 if (rte_compressdev_private_xform_create(cdev_id, &comp_xform, &new_comp_private_xform) < 0) {
     rte_exit(EXIT_FAILURE, "Failed to create compression private xform for algorithm %s", algorithm);
 }
@@ -100,7 +99,7 @@ for (unsigned int i = 0; i < burst_size; i++) {
     op->src.offset = 0;
     op->src.length = data_size;
     op->dst.offset = 0;
-    op->dst.length = 0; // Will be set by device
+    // Note: dst.length will be set by the device after compression
     
     // Set private xform in the operation
     op->private_xform = new_comp_private_xform;
