@@ -20,6 +20,42 @@ static uint64_t total_poll_cycles = 0;
 #define COMPRESS_LEVEL 6
 #define COMPRESS_WINDOW_SIZE 15
 
+static void print_compressdev_capabilities(uint8_t dev_id) {
+    const char *name = rte_compressdev_name_get(dev_id);
+    printf("compressdev %u name=%s\n", (unsigned)dev_id, name ? name : "<unknown>");
+
+    const struct rte_comp_xform_algos { const char *label; enum rte_comp_algorithm algo; } algos[] = {
+        {"DEFLATE", RTE_COMP_ALGO_DEFLATE},
+        {"LZ4",     RTE_COMP_ALGO_LZ4},
+        {"NULL",    RTE_COMP_ALGO_NULL},
+    };
+
+    for (unsigned i = 0; i < sizeof(algos)/sizeof(algos[0]); i++) {
+        const struct rte_compressdev_capabilities *cap =
+            rte_compressdev_capability_get(dev_id, algos[i].algo);
+        if (cap == NULL)
+            continue;
+
+        printf("  Algo=%s\n", algos[i].label);
+        printf("    window_size log2: min=%u max=%u\n",
+               (unsigned)cap->window_size.min, (unsigned)cap->window_size.max);
+        printf("    level: min=%u max=%u\n",
+               (unsigned)cap->level.min, (unsigned)cap->level.max);
+        printf("    checksum supp: none=%d adler32=%d crc32=%d xxhash32=%d both=%d\n",
+               !!(cap->comp_feature_flags & RTE_COMP_FF_CHKSUM_NONE),
+               !!(cap->comp_feature_flags & RTE_COMP_FF_ADLER32),
+               !!(cap->comp_feature_flags & RTE_COMP_FF_CRC32),
+               !!(cap->comp_feature_flags & RTE_COMP_FF_XXHASH32),
+               !!(cap->comp_feature_flags & RTE_COMP_FF_CRC32_ADLER32));
+        printf("    huffman supp: fixed=%d dynamic=%d\n",
+               !!(cap->comp_feature_flags & RTE_COMP_FF_HUFFMAN_FIXED),
+               !!(cap->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC));
+        printf("    stateful: compress=%d decompress=%d\n",
+               !!(cap->comp_feature_flags & RTE_COMP_FF_STATEFUL_COMPRESSION),
+               !!(cap->comp_feature_flags & RTE_COMP_FF_STATEFUL_DECOMPRESSION));
+    }
+}
+
 void setup_compressdev() {
     // Check that compression device is available
     int num_comp_devices = rte_compressdev_count();
@@ -30,6 +66,9 @@ void setup_compressdev() {
     // Get compression device info
     struct rte_compressdev_info cdev_info;
     rte_compressdev_info_get(cdev_id, &cdev_info);
+
+    // Print capabilities before default setup
+    print_compressdev_capabilities(cdev_id);
 
     // Create compression operation pool
     comp_op_pool = rte_comp_op_pool_create("comp_op_pool", 
@@ -60,14 +99,6 @@ void setup_compressdev() {
     // Start compression device
     if (rte_compressdev_start(cdev_id) < 0) {
         rte_exit(EXIT_FAILURE, "Failed to start compression device\n");
-    }
-
-    const struct rte_compressdev_capabilities *cap 
-	 			= rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
-    if (cap == NULL) {
-        rte_exit(EXIT_FAILURE, "Failed to get compression device capabilities\n");
-    } else {
-        printf("Compression device capabilities: %p\n", cap->window_size.max);
     }
 
     // Setup compression transform
