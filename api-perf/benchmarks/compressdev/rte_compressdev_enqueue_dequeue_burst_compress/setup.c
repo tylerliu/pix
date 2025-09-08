@@ -23,6 +23,12 @@ const char* huffman = huffman_str ? huffman_str : "dynamic";
 // Window size parameter: 1024, 2048, 4096, 8192, 16384, 32768
 const char* window_size_str = get_benchmark_param("window_size");
 unsigned int window_size = window_size_str ? (unsigned int)strtoul(window_size_str, NULL, 10) : 32768;
+// Convert byte window size to base-2 log value as required by DPDK API
+uint8_t window_log2 = 0;
+unsigned int tmp_ws = window_size > 0 ? window_size : 1;
+while (((unsigned int)1 << window_log2) < tmp_ws && window_log2 < 31) {
+    window_log2++;
+}
 
 // Configure compression xform based on parameters
 struct rte_comp_xform comp_xform = {
@@ -34,10 +40,10 @@ if (strcmp(algorithm, "deflate") == 0) {
     comp_xform.compress.algo = RTE_COMP_ALGO_DEFLATE;
     comp_xform.compress.deflate.huffman = (strcmp(huffman, "fixed") == 0) ? 
         RTE_COMP_HUFFMAN_FIXED : RTE_COMP_HUFFMAN_DYNAMIC;
-    comp_xform.compress.window_size = window_size;
+    comp_xform.compress.window_size = window_log2;
 } else if (strcmp(algorithm, "lz4") == 0) {
     comp_xform.compress.algo = RTE_COMP_ALGO_LZ4;
-    comp_xform.compress.window_size = window_size;
+    comp_xform.compress.window_size = window_log2;
 } else if (strcmp(algorithm, "null") == 0) {
     comp_xform.compress.algo = RTE_COMP_ALGO_NULL;
 } else {
