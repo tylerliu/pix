@@ -1,5 +1,5 @@
 // Define constants
-#define MBUF_DATA_SIZE 65536  // Large mbuf size for compression data
+#define MBUF_DATA_SIZE 32768  // Large mbuf size for compression data
 #define MBUF_POOL_SIZE 8192
 #define MBUF_CACHE_SIZE 128
 

@@ -7,9 +7,9 @@ static struct rte_mbuf *mbufs[256];
 static struct rte_mbuf *dst_mbufs[256];
 
 // Tunables for mbuf pool and mbuf payload sizes
-#define MBUF_POOL_SIZE 8192
+#define MBUF_POOL_SIZE 16384
 #define MBUF_CACHE_SIZE 256
-#define MBUF_DATA_SIZE RTE_MBUF_DEFAULT_BUF_SIZE
+#define MBUF_DATA_SIZE 32768
 
 // Per-op inputs
 static uint8_t ivs[256][MAX_AES_GCM_IV_LENGTH];
