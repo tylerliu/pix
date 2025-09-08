@@ -103,7 +103,7 @@ void setup_compressdev() {
         .type = RTE_COMP_COMPRESS,
         .compress = {
             .algo = RTE_COMP_ALGO_DEFLATE,
-            .deflate.huffman = RTE_COMP_HUFFMAN_DEFAULT,
+            .deflate.huffman = RTE_COMP_HUFFMAN_FIXED,
             .level = COMPRESS_LEVEL,
             .window_size = COMPRESS_WINDOW_SIZE,
             .chksum = RTE_COMP_CHECKSUM_CRC32,
