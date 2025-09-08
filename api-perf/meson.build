@@ -44,7 +44,6 @@ benchmark_configs = {
         'empty',
         'rte_compressdev_private_xform_create_free',
         'rte_comp_op_bulk_alloc_free',
-        'rte_compressdev_enqueue_dequeue_burst_compress',
         'rte_compressdev_enqueue_dequeue_burst_decompress'
     ]
 }
