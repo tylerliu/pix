@@ -3,6 +3,9 @@
         "cryptodev": {
             "eal_args": ["-a", "03:00.0,class=crypto,algo=1"]
         },
+        "compressdev": {
+            "eal_args": ["-a", "03:00.0,class=compress"]
+        },
         "dpdk": {
             "eal_args": ["-a", "auxiliary:mlx5_core.sf.4"]
         }
@@ -53,6 +56,53 @@
             "params": {
                 "burst_size": [1, 2, 8, 32],
                 "data_size": [32, 128, 512, 2048]
+            }
+        },
+        "rte_compressdev_private_xform_create_free": {},
+        "rte_comp_op_bulk_alloc_free": {
+            "params": {
+                "bulk_size": [1, 2, 8, 32]
+            }
+        },
+        "rte_compressdev_enqueue_dequeue_burst_compress": {
+            "params": {
+                "burst_size": [1, 2, 8, 32],
+                "data_size": [32, 128, 512, 2048],
+                "window_size": [1024, 2048, 4096, 8192, 16384, 32768]
+            },
+            "grouped_params": {
+                "algorithm_config": [
+                    {"algorithm": "deflate", "checksum": "none", "huffman": "fixed"},
+                    {"algorithm": "deflate", "checksum": "none", "huffman": "dynamic"},
+                    {"algorithm": "deflate", "checksum": "crc32", "huffman": "fixed"},
+                    {"algorithm": "deflate", "checksum": "crc32", "huffman": "dynamic"},
+                    {"algorithm": "deflate", "checksum": "adler32", "huffman": "fixed"},
+                    {"algorithm": "deflate", "checksum": "adler32", "huffman": "dynamic"},
+                    {"algorithm": "lz4", "checksum": "none", "huffman": null},
+                    {"algorithm": "lz4", "checksum": "xxhash32", "huffman": null},
+                    {"algorithm": "null", "checksum": "none", "huffman": null},
+                    {"algorithm": "null", "checksum": "crc32", "huffman": null},
+                    {"algorithm": "null", "checksum": "adler32", "huffman": null}
+                ]
+            }
+        },
+        "rte_compressdev_enqueue_dequeue_burst_decompress": {
+            "params": {
+                "burst_size": [1, 2, 8, 32],
+                "data_size": [32, 128, 512, 2048],
+                "window_size": [1024, 2048, 4096, 8192, 16384, 32768]
+            },
+            "grouped_params": {
+                "algorithm_config": [
+                    {"algorithm": "deflate", "checksum": "none", "huffman": null},
+                    {"algorithm": "deflate", "checksum": "crc32", "huffman": null},
+                    {"algorithm": "deflate", "checksum": "adler32", "huffman": null},
+                    {"algorithm": "lz4", "checksum": "none", "huffman": null},
+                    {"algorithm": "lz4", "checksum": "xxhash32", "huffman": null},
+                    {"algorithm": "null", "checksum": "none", "huffman": null},
+                    {"algorithm": "null", "checksum": "crc32", "huffman": null},
+                    {"algorithm": "null", "checksum": "adler32", "huffman": null}
+                ]
             }
         }
     }

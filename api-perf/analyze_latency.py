@@ -328,12 +328,12 @@ def main():
     parser = argparse.ArgumentParser(description='Analyze API performance benchmark results')
     parser.add_argument('--csv-dir', default='.', 
                        help='Directory containing CSV files (default: current directory)')
-    parser.add_argument('--output', default='function_latency_map.json',
-                       help='Output JSON file (default: function_latency_map.json)')
-    parser.add_argument('--polling-output', default='polling_analysis.json',
-                       help='Output polling analysis JSON file (default: polling_analysis.json)')
-    parser.add_argument('--correlations', default='correlations.json',
-                       help='Output correlations JSON file (default: correlations.json)')
+    parser.add_argument('--output', default='analysis-results/function_latency_map.json',
+                       help='Output JSON file (default: analysis-results/function_latency_map.json)')
+    parser.add_argument('--polling-output', default='analysis-results/polling_analysis.json',
+                       help='Output polling analysis JSON file (default: analysis-results/polling_analysis.json)')
+    parser.add_argument('--correlations', default='analysis-results/correlations.json',
+                       help='Output correlations JSON file (default: analysis-results/correlations.json)')
     
     args = parser.parse_args()
     
@@ -373,6 +373,12 @@ def main():
     # Generate polling analysis
     print("Generating polling analysis...")
     polling_data = generate_polling_analysis(df)
+    
+    # Create output directory if it doesn't exist
+    output_dir = os.path.dirname(args.output)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        print(f"Created output directory: {output_dir}")
     
     # Save results
     print(f"Saving function latency map to {args.output}...")
