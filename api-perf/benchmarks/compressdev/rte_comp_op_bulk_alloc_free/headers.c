@@ -1,3 +1,2 @@
-// No additional headers needed - compression headers are included in template
-
-
+// Declare variables
+static unsigned int burst_size;
