@@ -317,7 +317,7 @@ source_install_llvm()
 		
 		# Fetch and checkout only the specified branch and folders
 		git fetch --depth 1 origin llvmorg-$LLVM_RELEASE
-		git checkout -b llvmorg-$LLVM_RELEASE origin/llvmorg-$LLVM_RELEASE
+		git checkout FETCH_HEAD
 		
 		# Move folders to expected locations
 		mv "$BUILDDIR/llvm-project/llvm" "$BUILDDIR/llvm"
