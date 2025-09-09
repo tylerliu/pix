@@ -8,6 +8,10 @@ for (unsigned int i = 0; i < burst_size; i++) {
         rte_pktmbuf_free(mbufs[i]);
         mbufs[i] = NULL;
     }
+    if (dst_mbufs[i] != NULL) {
+        rte_pktmbuf_free(dst_mbufs[i]);
+        dst_mbufs[i] = NULL;
+    }
 }
 
 // Free the dynamically created private xform

@@ -7,6 +7,7 @@
 static unsigned int burst_size;
 struct rte_comp_op *ops[32];  // Max burst size
 struct rte_mbuf *mbufs[32];   // Max burst size
+struct rte_mbuf *dst_mbufs[32]; // Max burst size for destination
 static struct rte_mempool *mbuf_pool = NULL;
 
 // Variables for teardown and metadata

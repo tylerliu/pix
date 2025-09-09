@@ -65,9 +65,12 @@ if (mbuf_pool == NULL) {
     }
 }
 
-// Allocate mbufs for this burst
+// Allocate mbufs for this burst (source and destination)
 if (rte_pktmbuf_alloc_bulk(mbuf_pool, mbufs, burst_size) < 0) {
-    rte_exit(EXIT_FAILURE, "Failed to allocate mbufs");
+    rte_exit(EXIT_FAILURE, "Failed to allocate source mbufs");
+}
+if (rte_pktmbuf_alloc_bulk(mbuf_pool, dst_mbufs, burst_size) < 0) {
+    rte_exit(EXIT_FAILURE, "Failed to allocate destination mbufs");
 }
 
 // Initialize mbufs with compressed test data (simplified - in real scenario this would be actual compressed data)
@@ -86,12 +89,12 @@ for (unsigned int i = 0; i < burst_size; i++) {
 for (unsigned int i = 0; i < burst_size; i++) {
     struct rte_comp_op *op = ops[i];
     op->m_src = mbufs[i];
-    op->m_dst = NULL; // Will be allocated by the device
+    op->m_dst = dst_mbufs[i]; // Allocate destination mbuf
     
     op->src.offset = 0;
     op->src.length = data_size;
     op->dst.offset = 0;
-    // Note: dst.length will be set by the device after decompression
+    op->dst.length = data_size * 2; // Reserve space for decompressed data
     
     // Set private xform in the operation
     op->private_xform = new_decomp_private_xform;
