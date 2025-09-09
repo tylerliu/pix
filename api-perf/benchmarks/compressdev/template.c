@@ -40,15 +40,6 @@ void setup_compressdev() {
     struct rte_compressdev_info cdev_info;
     rte_compressdev_info_get(cdev_id, &cdev_info);
 
-    // Check for shareable private xform capability
-    const struct rte_compressdev_capabilities *cap =
-        rte_compressdev_capability_get(cdev_id, RTE_COMP_ALGO_DEFLATE);
-    if (cap && (cap->comp_feature_flags & RTE_COMP_FF_SHAREABLE_PRIV_XFORM)) {
-        printf("Device supports shareable private xforms\n");
-    } else {
-        printf("Device does NOT support shareable private xforms\n");
-    }
-
     // Create compression operation pool
     comp_op_pool = rte_comp_op_pool_create("comp_op_pool", 
                                          8192, 128, 0, rte_socket_id());
