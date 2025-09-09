@@ -307,7 +307,7 @@ source_install_llvm()
 	then
 		# Create a new repository with sparse checkout
 		git init "$BUILDDIR/llvm-project"
-		cd "$BUILDDIR/llvm-project"
+		pushd "$BUILDDIR/llvm-project"
 		git remote add origin https://github.com/llvm/llvm-project
 		git config core.sparseCheckout true
 		
@@ -324,6 +324,9 @@ source_install_llvm()
 		mv "$BUILDDIR/llvm-project/clang" "$BUILDDIR/llvm/tools/clang"
 		rm -rf "$BUILDDIR/llvm-project"
 		echo "$LLVM_RELEASE" > "$BUILDDIR/llvm/.version"
+
+		# change the directory back after setup
+		popd
 	fi
 
 	if [ ! -f "llvm/build/bin/clang-${LLVM_RELEASE%.*.*}" ] || [ ! -f llvm/build/bin/llvm-config ];
