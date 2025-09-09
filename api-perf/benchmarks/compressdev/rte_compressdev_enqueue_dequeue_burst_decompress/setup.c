@@ -94,7 +94,6 @@ for (unsigned int i = 0; i < burst_size; i++) {
     op->src.offset = 0;
     op->src.length = data_size;
     op->dst.offset = 0;
-    op->dst.length = data_size * 2; // Reserve space for decompressed data
     
     // Set private xform in the operation
     op->private_xform = new_decomp_private_xform;
