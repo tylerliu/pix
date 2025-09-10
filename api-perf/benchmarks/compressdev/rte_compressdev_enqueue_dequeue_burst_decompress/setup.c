@@ -73,17 +73,57 @@ if (rte_pktmbuf_alloc_bulk(mbuf_pool, dst_mbufs, burst_size) < 0) {
     rte_exit(EXIT_FAILURE, "Failed to allocate destination mbufs");
 }
 
-// Initialize mbufs with compressed test data (simplified - in real scenario this would be actual compressed data)
+// Load pre-compressed data files
+const char* data_dir = get_benchmark_param("data_dir");
+if (data_dir == NULL) {
+    data_dir = "compressed_data";  // Default directory
+}
+
+// Create filename based on algorithm, data size, and window size
+char filename[256];
+if (strcmp(algorithm, "deflate") == 0) {
+    // For deflate, include window size in filename
+    snprintf(filename, sizeof(filename), "%s/%s_random_%u_w%u.bin", data_dir, algorithm, data_size, window_size);
+} else {
+    // For lz4 and null, window size doesn't apply
+    snprintf(filename, sizeof(filename), "%s/%s_random_%u.bin", data_dir, algorithm, data_size);
+}
+
+FILE *compressed_file = fopen(filename, "rb");
+if (compressed_file == NULL) {
+    rte_exit(EXIT_FAILURE, "Failed to open compressed data file: %s", filename);
+}
+
+// Get file size
+fseek(compressed_file, 0, SEEK_END);
+long file_size = ftell(compressed_file);
+fseek(compressed_file, 0, SEEK_SET);
+
+if (file_size > MBUF_DATA_SIZE) {
+    fclose(compressed_file);
+    rte_exit(EXIT_FAILURE, "Compressed file size (%ld) exceeds MBUF_DATA_SIZE (%u)", file_size, (unsigned)MBUF_DATA_SIZE);
+}
+
+// Read compressed data
+uint8_t *compressed_data = malloc(file_size);
+if (fread(compressed_data, 1, file_size, compressed_file) != file_size) {
+    free(compressed_data);
+    fclose(compressed_file);
+    rte_exit(EXIT_FAILURE, "Failed to read compressed data from %s", filename);
+}
+fclose(compressed_file);
+
+// Initialize mbufs with actual compressed data
 for (unsigned int i = 0; i < burst_size; i++) {
     rte_pktmbuf_reset(mbufs[i]);
-    rte_pktmbuf_append(mbufs[i], data_size);
+    rte_pktmbuf_append(mbufs[i], file_size);
     
-    // Fill with test data (in real scenario this would be compressed data)
+    // Copy compressed data to mbuf
     uint8_t *data = rte_pktmbuf_mtod(mbufs[i], uint8_t *);
-    for (unsigned int j = 0; j < data_size; j++) {
-        data[j] = (uint8_t)(i + j);
-    }
+    memcpy(data, compressed_data, file_size);
 }
+
+free(compressed_data);
 
 // Setup decompression operations
 for (unsigned int i = 0; i < burst_size; i++) {
@@ -92,7 +132,7 @@ for (unsigned int i = 0; i < burst_size; i++) {
     op->m_dst = dst_mbufs[i]; // Allocate destination mbuf
     
     op->src.offset = 0;
-    op->src.length = data_size;
+    op->src.length = file_size;  // Use actual compressed data size
     op->dst.offset = 0;
     
     // Set private xform in the operation

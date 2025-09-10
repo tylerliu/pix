@@ -79,10 +79,12 @@
             }
         },
         "rte_compressdev_enqueue_dequeue_burst_decompress": {
+            "setup_command": "python3 generate_compressed_data.py --output-dir compressed_data --data-sizes 32 256 2048 32768 --data-types random text --algorithms deflate lz4 null --window-sizes 1024 4096 16384",
             "params": {
                 "burst_size": [1, 2, 8, 32],
                 "data_size": [32, 256, 2048, 32768],
-                "window_size": [1024, 4096, 16384]
+                "window_size": [1024, 4096, 16384],
+                "data_dir": ["compressed_data"]
             },
             "grouped_params": {
                 "algorithm_config": [

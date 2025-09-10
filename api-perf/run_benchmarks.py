@@ -313,12 +313,47 @@ def _parse_metadata(stdout_text: str) -> dict:
     return {}
 
 
-def run_benchmark(function_name: str, build_dir: str, prefix: str, runner: BenchmarkRunner, cmd_args: list[str], env: dict[str, str] | None = None, case_info: str | None = None, dry_run: bool = False) -> tuple[int, float | None, dict, str, str]:
+def run_setup_command(setup_command: str, dry_run: bool = False) -> bool:
+    """Run a setup command before the benchmark."""
+    if not setup_command:
+        return True
+    
+    print(f"\n--- Running setup command ---")
+    print(f"Command: {setup_command}")
+    
+    if dry_run:
+        print("DRY RUN: Would execute the above setup command")
+        return True
+    
+    try:
+        result = subprocess.run(setup_command, shell=True, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Setup command failed with return code {result.returncode}:", file=sys.stderr)
+            if result.stdout:
+                print(result.stdout, file=sys.stderr)
+            if result.stderr:
+                print(result.stderr, file=sys.stderr)
+            return False
+        else:
+            if result.stdout:
+                print(result.stdout.strip())
+            print("✓ Setup command completed successfully")
+            return True
+    except Exception as e:
+        print(f"Error running setup command: {e}", file=sys.stderr)
+        return False
+
+def run_benchmark(function_name: str, build_dir: str, prefix: str, runner: BenchmarkRunner, cmd_args: list[str], env: dict[str, str] | None = None, case_info: str | None = None, dry_run: bool = False, setup_command: str | None = None) -> tuple[int, float | None, dict, str, str]:
     exe_path = build_executable_path(build_dir, prefix, function_name)
 
     if not os.path.exists(exe_path):
         print(f"Executable not found: {exe_path}", file=sys.stderr)
         print("Make sure you have built the project with Meson before running this script.", file=sys.stderr)
+        return 1, None, {}, "", ""
+
+    # Run setup command first (if provided)
+    if setup_command and not run_setup_command(setup_command, dry_run):
+        print(f"Setup command failed for {function_name}", file=sys.stderr)
         return 1, None, {}, "", ""
 
     # Warm up the executable first (skip in dry-run mode)
@@ -484,7 +519,7 @@ Optimizations applied:
             benchmark_args = ['-i', str(args.iterations)]
             cmd_args = eal_args + ['--'] + benchmark_args
             
-            rc, cycles, metadata, _out, _err = run_benchmark('empty', build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=os.environ.copy(), case_info="Empty baseline", dry_run=args.dry_run)
+            rc, cycles, metadata, _out, _err = run_benchmark('empty', build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=os.environ.copy(), case_info="Empty baseline", dry_run=args.dry_run, setup_command=None)
             if cycles is not None:
                 empty_cycles[prefix] = cycles
                 print(f"Empty benchmark for {prefix}: {cycles} cycles")
@@ -500,6 +535,7 @@ Optimizations applied:
         params_dict = benchmark_full_config.get("params", {})
         grouped_params = benchmark_full_config.get("grouped_params", {})
         eal_args = benchmark_full_config.get("eal_args", [])
+        setup_command = benchmark_full_config.get("setup_command", None)
         
         # Generate parameter combinations
         if grouped_params:
@@ -539,7 +575,7 @@ Optimizations applied:
                         # Set up environment
                         env = os.environ.copy()
                         
-                        rc, cycles, metadata, stdout, stderr = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=env, case_info=case_info, dry_run=args.dry_run)
+                        rc, cycles, metadata, stdout, stderr = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=env, case_info=case_info, dry_run=args.dry_run, setup_command=setup_command)
                         
                         if cycles is not None:
                             total_cycles = cycles  # cycles is already total cycles now
@@ -582,7 +618,7 @@ Optimizations applied:
                 # Set up environment
                 env = os.environ.copy()
                 
-                rc, cycles, metadata, stdout, stderr = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=env, case_info=case_info, dry_run=args.dry_run)
+                rc, cycles, metadata, stdout, stderr = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=env, case_info=case_info, dry_run=args.dry_run, setup_command=setup_command)
                 
                 if cycles is not None:
                     total_cycles = cycles  # cycles is already total cycles now
