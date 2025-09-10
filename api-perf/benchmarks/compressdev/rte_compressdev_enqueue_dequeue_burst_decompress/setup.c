@@ -85,7 +85,7 @@ snprintf(filename, sizeof(filename), "%s/%s_random_%u.bin", data_dir, algorithm,
 
 FILE *compressed_file = fopen(filename, "rb");
 if (compressed_file == NULL) {
-    rte_exit(EXIT_FAILURE, "Failed to open compressed data file: %s", filename);
+    rte_exit(EXIT_FAILURE, "Failed to open compressed data file: %s\n", filename);
 }
 
 // Get file size
@@ -95,7 +95,7 @@ fseek(compressed_file, 0, SEEK_SET);
 
 if (file_size > MBUF_DATA_SIZE) {
     fclose(compressed_file);
-    rte_exit(EXIT_FAILURE, "Compressed file size (%ld) exceeds MBUF_DATA_SIZE (%u)", file_size, (unsigned)MBUF_DATA_SIZE);
+    rte_exit(EXIT_FAILURE, "Compressed file size (%ld) exceeds MBUF_DATA_SIZE (%u)\n", file_size, (unsigned)MBUF_DATA_SIZE);
 }
 
 // Read compressed data

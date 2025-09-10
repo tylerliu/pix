@@ -9,6 +9,8 @@ import subprocess
 import argparse
 import tempfile
 import shutil
+import random
+import string
 from pathlib import Path
 
 def create_test_data(size_bytes, data_type="random"):
@@ -17,9 +19,9 @@ def create_test_data(size_bytes, data_type="random"):
         # Generate random data
         return os.urandom(size_bytes)
     elif data_type == "text":
-        # Generate repetitive text data (good for compression)
-        pattern = "This is test data for compression benchmarking. " * 100
-        return (pattern * (size_bytes // len(pattern) + 1))[:size_bytes].encode()
+        # Generate random text data
+        chars = string.ascii_letters + string.digits + string.punctuation + " "
+        return ''.join(random.choice(chars) for _ in range(size_bytes)).encode()
     elif data_type == "zeros":
         # Generate zero-filled data
         return b'\x00' * size_bytes
