@@ -21,7 +21,7 @@ if (new_decomp_private_xform != NULL) {
 }
 
 // Print metadata
-printf("metadata: {'burst_size': %u, 'algorithm': '%s', 'checksum': '%s', 'total_poll_cycles': %lu}\n", 
-       burst_size, algorithm, checksum, (unsigned long)total_poll_cycles);
+printf("metadata: {'burst_size': %u, 'algorithm': '%s', 'checksum': '%s', 'total_poll_cycles': %lu, 'total_failed_ops': %lu}\n", 
+       burst_size, algorithm, checksum, (unsigned long)total_poll_cycles, total_failed_ops);
 
 

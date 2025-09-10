@@ -14,3 +14,4 @@ static struct rte_mempool *mbuf_pool = NULL;
 static void *new_decomp_private_xform = NULL;
 static const char *algorithm = NULL;
 static const char *checksum = NULL;
+static unsigned long total_failed_ops = 0;
