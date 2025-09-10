@@ -41,16 +41,13 @@ for (unsigned int i = 0; i < total_dequeued; i++) {
             case RTE_COMP_OP_STATUS_INVALID_ARGS:
                 printf("  -> Invalid arguments provided\n");
                 break;
-            case RTE_COMP_OP_STATUS_ERROR_HW:
-                printf("  -> Hardware error occurred\n");
-                break;
-            case RTE_COMP_OP_STATUS_ERROR_BAD_STATE:
+            case RTE_COMP_OP_STATUS_INVALID_STATE:
                 printf("  -> Bad state error\n");
                 break;
-            case RTE_COMP_OP_STATUS_ERROR_OUT_OF_SPACE_TERMINATED:
+            case RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED:
                 printf("  -> Out of space - operation terminated\n");
                 break;
-            case RTE_COMP_OP_STATUS_ERROR_OUT_OF_SPACE_RECOVERY:
+            case RTE_COMP_OP_STATUS_OUT_OF_SPACE_RECOVERABLE:
                 printf("  -> Out of space - operation recovered\n");
                 break;
             default:
