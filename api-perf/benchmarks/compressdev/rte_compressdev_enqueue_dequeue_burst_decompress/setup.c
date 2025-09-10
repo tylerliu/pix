@@ -79,15 +79,9 @@ if (data_dir == NULL) {
     data_dir = "compressed_data";  // Default directory
 }
 
-// Create filename based on algorithm, data size, and window size
+// Create filename based on algorithm and data size
 char filename[256];
-if (strcmp(algorithm, "deflate") == 0) {
-    // For deflate, include window size in filename
-    snprintf(filename, sizeof(filename), "%s/%s_random_%u_w%u.bin", data_dir, algorithm, data_size, window_size);
-} else {
-    // For lz4 and null, window size doesn't apply
-    snprintf(filename, sizeof(filename), "%s/%s_random_%u.bin", data_dir, algorithm, data_size);
-}
+snprintf(filename, sizeof(filename), "%s/%s_random_%u.bin", data_dir, algorithm, data_size);
 
 FILE *compressed_file = fopen(filename, "rb");
 if (compressed_file == NULL) {

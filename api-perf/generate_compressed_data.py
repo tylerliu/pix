@@ -26,35 +26,21 @@ def create_test_data(size_bytes, data_type="random"):
     else:
         raise ValueError(f"Unknown data type: {data_type}")
 
-def compress_with_gzip(data, output_path, window_size=None):
+def compress_with_gzip(data, output_path):
     """Compress data using gzip (deflate algorithm)."""
     with tempfile.NamedTemporaryFile() as tmp_file:
         tmp_file.write(data)
         tmp_file.flush()
         
-        # Use gzip to compress with optional window size
-        cmd = ['gzip', '-c']
-        if window_size is not None:
-            # gzip uses -w for window size (1-15, where 15 = 32KB)
-            # Convert window_size to gzip format: 1024->10, 4096->12, 16384->15
-            if window_size <= 1024:
-                gzip_window = 10
-            elif window_size <= 4096:
-                gzip_window = 12
-            elif window_size <= 16384:
-                gzip_window = 15
-            else:
-                gzip_window = 15  # Max window size
-            cmd.extend(['-w', str(gzip_window)])
-        
-        cmd.append(tmp_file.name)
-        result = subprocess.run(cmd, capture_output=True, check=True)
+        # Use gzip to compress
+        result = subprocess.run([
+            'gzip', '-c', tmp_file.name
+        ], capture_output=True, check=True)
         
         with open(output_path, 'wb') as f:
             f.write(result.stdout)
     
-    window_info = f" (window={window_size})" if window_size else ""
-    print(f"Created gzip compressed file: {output_path} ({len(result.stdout)} bytes){window_info}")
+    print(f"Created gzip compressed file: {output_path} ({len(result.stdout)} bytes)")
 
 def compress_with_lz4(data, output_path):
     """Compress data using lz4."""
@@ -91,8 +77,6 @@ def main():
     parser.add_argument('--algorithms', nargs='+', default=['deflate', 'lz4', 'null'],
                        choices=['deflate', 'lz4', 'null'],
                        help='Compression algorithms to use')
-    parser.add_argument('--window-sizes', nargs='+', type=int, default=[1024, 4096, 16384],
-                       help='Window sizes to generate (for deflate algorithm)')
     
     args = parser.parse_args()
     
@@ -104,7 +88,6 @@ def main():
     print(f"Data sizes: {args.data_sizes}")
     print(f"Data types: {args.data_types}")
     print(f"Algorithms: {args.algorithms}")
-    print(f"Window sizes: {args.window_sizes}")
     print()
     
     # Check for required tools
@@ -126,34 +109,19 @@ def main():
             test_data = create_test_data(data_size, data_type)
             
             for algorithm in args.algorithms:
+                # Create filename
+                filename = f"{algorithm}_{data_type}_{data_size}.bin"
+                output_path = output_dir / filename
+                
+                # Compress data
                 if algorithm == 'deflate':
-                    # For deflate, generate files for each window size
-                    for window_size in args.window_sizes:
-                        # Create filename with window size
-                        filename = f"{algorithm}_{data_type}_{data_size}_w{window_size}.bin"
-                        output_path = output_dir / filename
-                        
-                        # Compress data with specific window size
-                        compress_with_gzip(test_data, output_path, window_size)
-                else:
-                    # For lz4 and null, window size doesn't apply
-                    filename = f"{algorithm}_{data_type}_{data_size}.bin"
-                    output_path = output_dir / filename
-                    
-                    if algorithm == 'lz4':
-                        compress_with_lz4(test_data, output_path)
-                    elif algorithm == 'null':
-                        create_null_data(test_data, output_path)
+                    compress_with_gzip(test_data, output_path)
+                elif algorithm == 'lz4':
+                    compress_with_lz4(test_data, output_path)
+                elif algorithm == 'null':
+                    create_null_data(test_data, output_path)
     
-    # Calculate total files generated
-    total_files = 0
-    for algorithm in args.algorithms:
-        if algorithm == 'deflate':
-            total_files += len(args.data_sizes) * len(args.data_types) * len(args.window_sizes)
-        else:
-            total_files += len(args.data_sizes) * len(args.data_types)
-    
-    print(f"\n✓ Generated {total_files} compressed data files")
+    print(f"\n✓ Generated {len(args.data_sizes) * len(args.data_types) * len(args.algorithms)} compressed data files")
     print(f"Files are ready for use in decompression benchmarks")
     
     return 0
