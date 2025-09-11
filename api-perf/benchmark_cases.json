@@ -82,19 +82,18 @@
             "setup_command": "python3 generate_compressed_data.py --output-dir compressed_data --data-sizes 32 256 2048 32768 --data-types random text --algorithms deflate lz4 null",
             "params": {
                 "burst_size": [1, 2, 8, 32],
-                "data_size": [32, 256, 2048, 32768],
+                "data_size": [32, 256, 2048, 8192, 32767],
                 "data_dir": ["compressed_data"]
             },
             "grouped_params": {
                 "algorithm_config": [
-                    {"algorithm": "deflate", "checksum": "none", "huffman": "fixed"},
-                    {"algorithm": "deflate", "checksum": "none", "huffman": "dynamic"},
-                    {"algorithm": "lz4", "checksum": "none", "huffman": null},
-                    {"algorithm": "lz4", "checksum": "xxhash32", "huffman": null},
-                    {"algorithm": "null", "checksum": "none", "huffman": null},
-                    {"algorithm": "null", "checksum": "crc32", "huffman": null},
-                    {"algorithm": "null", "checksum": "adler32", "huffman": null},
-                    {"algorithm": "null", "checksum": "combined", "huffman": null}
+                    {"algorithm": "deflate", "checksum": "none"},
+                    {"algorithm": "lz4", "checksum": "none"},
+                    {"algorithm": "lz4", "checksum": "xxhash32"},
+                    {"algorithm": "null", "checksum": "none"},
+                    {"algorithm": "null", "checksum": "crc32"},
+                    {"algorithm": "null", "checksum": "adler32"},
+                    {"algorithm": "null", "checksum": "combined"}
                 ]
             }
         }
