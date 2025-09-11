@@ -49,13 +49,13 @@
         "rte_cryptodev_enqueue_dequeue_burst_encrypt": {
             "params": {
                 "burst_size": [1, 2, 8, 32],
-                "data_size": [32, 128, 512, 2048, 8192, 32768]
+                "data_size": [32, 128, 512, 2048, 8192, 32000]
             }
         },
         "rte_cryptodev_enqueue_dequeue_burst_decrypt": {
             "params": {
                 "burst_size": [1, 2, 8, 32],
-                "data_size": [32, 256, 2048, 32768]
+                "data_size": [32, 256, 2048, 32000]
             }
         },
         "rte_compressdev_private_xform_create_free": {
