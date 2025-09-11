@@ -19,10 +19,10 @@ static void setup_regexdev() {
     rte_regexdev_info_get(rdev_id, &info);
 
     struct rte_regexdev_config dev_conf = {
-        .queue_pairs = 1,
+        .nb_queue_pairs = 1,
         .nb_max_matches = 1,
         .rule_db_len = 0,
-        .rules = NULL,
+        .rule_db = NULL,
     };
     if (rte_regexdev_configure(rdev_id, &dev_conf) < 0) {
         rte_exit(EXIT_FAILURE, "Failed to configure regexdev %u\n", rdev_id);
@@ -47,12 +47,18 @@ void setup_benchmark() {
 
 void run_benchmark(void) {
     uint64_t start, end;
+    total_poll_cycles = 0;  // Reset for this benchmark run
+
     start = rte_rdtsc();
     for (unsigned long long i = 0; i < g_iterations; ++i) {
         // {{BENCHMARK_LOOP}}
+        uint64_t start_rdtsc = rte_rdtsc();
+        rte_pause(); // a pause to not overload the core. 
+        total_poll_cycles += rte_rdtsc() - start_rdtsc;
     }
     end = rte_rdtsc();
-    uint64_t total_cycles = end - start;
+
+    uint64_t total_cycles = end - start - total_poll_cycles;
     printf("Total cycles: %lu\n", (unsigned long)total_cycles);
 }
 
