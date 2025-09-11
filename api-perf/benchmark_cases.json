@@ -6,6 +6,9 @@
         "compressdev": {
             "eal_args": ["-a", "03:00.0,class=compress"]
         },
+        "regexdev": {
+            "eal_args": ["-a", "03:00.0,class=regex"]
+        },
         "dpdk": {
             "eal_args": ["-a", "auxiliary:mlx5_core.sf.4"]
         }
