@@ -86,12 +86,13 @@ def compress_with_lz4(data, output_path):
         try:
             # Use lz4 with --no-frame to avoid frame format
             result = subprocess.run([
-                'lz4', '-c', tmp_file.name
+                'lz4', '-BD', '-c', tmp_file.name
             ], capture_output=True, check=True)
+            compressed_data = result.stdout[7:-8] # Remove frame header and footer (including checksum)
             
             with open(output_path, 'wb') as f:
-                f.write(result.stdout)
-            print(f"Created lz4 compressed file: {output_path} ({len(result.stdout)} bytes) - using command line lz4")
+                f.write(compressed_data)
+            print(f"Created lz4 compressed file: {output_path} ({len(compressed_data)} bytes) - using command line lz4")
             return
             
         except subprocess.CalledProcessError:
