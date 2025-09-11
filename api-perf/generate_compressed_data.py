@@ -60,66 +60,46 @@ def compress_with_lz4(data, output_path):
     
     DPDK expects: single compressed data-only block without block size or block checksum
     """
-    # Try using zstd with LZ4 compatibility mode if available
     try:
-        with tempfile.NamedTemporaryFile() as tmp_file:
-            tmp_file.write(data)
-            tmp_file.flush()
-            
-            # Try zstd with LZ4 compatibility
+        # Use Python lz4 library for raw compression
+        import lz4.block
+        
+        # Compress the data with minimal options
+        compressed_data = lz4.block.compress(data, store_size=False)
+        
+        with open(output_path, 'wb') as f:
+            f.write(compressed_data)
+        print(f"Created lz4 compressed file: {output_path} ({len(compressed_data)} bytes) - using Python lz4")
+        return
+        
+    except ImportError:
+        print("Python lz4 library not available, falling back to command line tool")
+    except Exception as e:
+        print(f"Python lz4 compression failed: {e}, falling back to command line tool")
+    
+    # Fallback to command line lz4
+    with tempfile.NamedTemporaryFile() as tmp_file:
+        tmp_file.write(data)
+        tmp_file.flush()
+        
+        try:
+            # Use lz4 with --no-frame to avoid frame format
             result = subprocess.run([
-                'zstd', '--format=lz4', '-c', tmp_file.name
+                'lz4', '--no-frame', '-c', tmp_file.name
             ], capture_output=True, check=True)
             
             with open(output_path, 'wb') as f:
                 f.write(result.stdout)
-            print(f"Created lz4 compressed file: {output_path} ({len(result.stdout)} bytes) - using zstd LZ4 format")
+            print(f"Created lz4 compressed file: {output_path} ({len(result.stdout)} bytes) - using command line lz4")
             return
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        pass
-    
-    # Try using a different approach - create a simple compressed block
-    # For testing, let's just create a minimal valid LZ4 block
-    
-    # Create a simple compressed representation
-    # This is a basic test - in production you'd want proper LZ4 compression
-    compressed_data = bytearray()
-    
-    # Add a simple token sequence that LZ4 can understand
-    # Token format: [LLMM] where LL=literal length, MM=match length
-    # For now, let's create a simple pattern
-    
-    if len(data) > 0:
-        # Create a simple compressed block
-        # Start with literal length (up to 15)
-        literal_len = min(15, len(data))
-        token = literal_len  # No match length for now
-        
-        compressed_data.append(token)
-        
-        # Add the literal data
-        for i in range(literal_len):
-            compressed_data.append(data[i])
-        
-        # Add remaining data as literals if needed
-        if len(data) > literal_len:
-            remaining = data[literal_len:]
-            # Add more tokens for remaining data
-            while remaining:
-                chunk_len = min(15, len(remaining))
-                compressed_data.append(chunk_len)
-                for i in range(chunk_len):
-                    compressed_data.append(remaining[i])
-                remaining = remaining[chunk_len:]
-    
-    # Add end marker (token with 0 length)
-    compressed_data.append(0)
-    
-    with open(output_path, 'wb') as f:
-        f.write(compressed_data)
-    
-    print(f"Created test lz4 compressed file: {output_path} ({len(compressed_data)} bytes) - simple token-based compression")
-    print("Note: This is a simplified compression for testing. For production, use proper LZ4 compression.")
+            
+        except subprocess.CalledProcessError:
+            # Final fallback: create a simple test file
+            print("LZ4 compression failed, creating test file with original data for debugging")
+            with open(output_path, 'wb') as f:
+                f.write(data)
+            print(f"Created test file: {output_path} ({len(data)} bytes) - original data (for testing)")
+            return
 
 def create_null_data(data, output_path):
     """Create 'null' compressed data (just copy the original data)."""
