@@ -3,6 +3,7 @@ project('api-benchmark', 'c')
 cc = meson.get_compiler('c')
 
 dpdk_dep = dependency('libdpdk', required: true)
+rte_bus_vdev_dep = cc.find_library('rte_bus_vdev', required: true)
 
 benchmark_driver_src = files('driver/benchmark_driver.c')
 
@@ -70,7 +71,7 @@ foreach gen_src : generated_sources
     exe_name = gen_src.split('/')[-1].split('.')[0]
     executable(exe_name,
         sources: [benchmark_driver_src, gen_src],
-        dependencies: [dpdk_dep],
+        dependencies: [dpdk_dep, rte_bus_vdev_dep],
         include_directories: include_directories('.'),
         install: true,
         install_dir: 'bin/api_benchmarks')
