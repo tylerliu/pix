@@ -523,6 +523,11 @@ Optimizations applied:
             if cycles is not None:
                 empty_cycles[prefix] = cycles
                 print(f"Empty benchmark for {prefix}: {cycles} cycles")
+                
+                # Write empty benchmark results to CSV
+                if csv_writer:
+                    metadata_json = json.dumps(metadata).replace('"', "'")
+                    csv_writer.writerow(['empty', prefix, args.iterations, cycles, metadata_json])
             if rc != 0:
                 exit_code = rc
 
