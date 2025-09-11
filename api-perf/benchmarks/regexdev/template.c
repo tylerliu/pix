@@ -7,6 +7,8 @@
 
 // {{DPDK_HEADERS}}
 
+static uint64_t total_poll_cycles = 0;
+
 static uint8_t rdev_id = 0;
 
 static void setup_regexdev() {
