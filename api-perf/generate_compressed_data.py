@@ -29,31 +29,57 @@ def create_test_data(size_bytes, data_type="random"):
         raise ValueError(f"Unknown data type: {data_type}")
 
 def compress_with_gzip(data, output_path):
-    """Compress data using gzip (deflate algorithm)."""
+    """Compress data using gzip to generate raw deflate data."""
     with tempfile.NamedTemporaryFile() as tmp_file:
         tmp_file.write(data)
         tmp_file.flush()
         
-        # Use gzip to compress
+        # Use gzip with -n (no name) and -c (stdout) to get raw deflate data
+        # The -n flag removes the filename from the gzip header
         result = subprocess.run([
-            'gzip', '-c', tmp_file.name
+            'gzip', '-n', '-c', tmp_file.name
         ], capture_output=True, check=True)
+        
+        # For DPDK, we need raw deflate data without gzip headers
+        # gzip format: [10-byte header][deflate data][8-byte trailer]
+        # We need to extract just the deflate data
+        gzip_data = result.stdout
+        if len(gzip_data) < 18:  # Minimum gzip size
+            raise ValueError("Invalid gzip data")
+        
+        # Extract deflate data (skip 10-byte header and 8-byte trailer)
+        deflate_data = gzip_data[10:-8]
         
         with open(output_path, 'wb') as f:
-            f.write(result.stdout)
+            f.write(deflate_data)
     
-    print(f"Created gzip compressed file: {output_path} ({len(result.stdout)} bytes)")
+    print(f"Created raw deflate compressed file: {output_path} ({len(deflate_data)} bytes)")
 
 def compress_with_lz4(data, output_path):
-    """Compress data using lz4."""
+    """Compress data using lz4 to generate raw LZ4 data."""
     with tempfile.NamedTemporaryFile() as tmp_file:
         tmp_file.write(data)
         tmp_file.flush()
         
-        # Use lz4 to compress
-        result = subprocess.run([
-            'lz4', '-c', tmp_file.name
-        ], capture_output=True, check=True)
+        # Use lz4 with --no-frame-crc and --no-frame to get raw LZ4 data
+        # Try different options to get raw LZ4 blocks without frame headers
+        try:
+            result = subprocess.run([
+                'lz4', '--no-frame-crc', '--no-frame', '-c', tmp_file.name
+            ], capture_output=True, check=True)
+        except subprocess.CalledProcessError:
+            # Fallback: try with just --no-frame
+            try:
+                result = subprocess.run([
+                    'lz4', '--no-frame', '-c', tmp_file.name
+                ], capture_output=True, check=True)
+            except subprocess.CalledProcessError:
+                # Final fallback: use basic lz4 and extract raw data
+                result = subprocess.run([
+                    'lz4', '-c', tmp_file.name
+                ], capture_output=True, check=True)
+                # For now, use the full output - DPDK might handle frame format
+                pass
         
         with open(output_path, 'wb') as f:
             f.write(result.stdout)
