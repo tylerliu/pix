@@ -23,6 +23,7 @@ static void setup_regexdev() {
     struct rte_regexdev_config dev_conf = {
         .nb_queue_pairs = 1,
         .nb_max_matches = 1,
+        .nb_groups = 1,
         .rule_db_len = 0,
         .rule_db = NULL,
     };
