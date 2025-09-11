@@ -62,10 +62,11 @@ def compress_with_lz4(data, output_path):
     """
     try:
         # Use Python lz4 library for raw compression
-        import lz4.block
-        
+        import lz4.frame
+
         # Compress the data with minimal options
-        compressed_data = lz4.block.compress(data, store_size=False)
+        compressed_data = lz4.frame.compress(data, store_size=False)
+        compressed_data = compressed_data[7:-4]
         
         with open(output_path, 'wb') as f:
             f.write(compressed_data)
