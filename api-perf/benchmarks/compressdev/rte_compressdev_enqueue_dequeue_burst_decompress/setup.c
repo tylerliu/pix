@@ -115,6 +115,10 @@ for (unsigned int i = 0; i < burst_size; i++) {
     // Copy compressed data to mbuf
     uint8_t *data = rte_pktmbuf_mtod(mbufs[i], uint8_t *);
     memcpy(data, compressed_data, file_size);
+    
+    // Initialize destination mbufs
+    rte_pktmbuf_reset(dst_mbufs[i]);
+    rte_pktmbuf_append(dst_mbufs[i], data_size);  // Reserve space for decompressed data
 }
 
 free(compressed_data);
