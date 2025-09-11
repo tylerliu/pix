@@ -24,6 +24,7 @@ static void setup_regexdev() {
         .nb_queue_pairs = 1,
         .nb_max_matches = 1,
         .nb_groups = 1,
+        .nb_rules_per_group = 1,
         .rule_db_len = 0,
         .rule_db = NULL,
     };
