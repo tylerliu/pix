@@ -5,7 +5,7 @@
 #include <rte_ethdev.h>
 #include <rte_mbuf.h>
 #include <rte_compressdev.h>
-#include <rte_vdev.h>
+#include <rte_bus_vdev.h>
 
 #include "driver/benchmark_driver.h"
 
