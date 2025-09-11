@@ -57,34 +57,56 @@ def compress_with_gzip(data, output_path):
 
 def compress_with_lz4(data, output_path):
     """Compress data using lz4 to generate raw LZ4 data."""
+    try:
+        # Try using Python lz4 library for raw compression
+        import lz4.block
+        compressed_data = lz4.block.compress(data, store_size=False)
+        with open(output_path, 'wb') as f:
+            f.write(compressed_data)
+        print(f"Created raw lz4 compressed file: {output_path} ({len(compressed_data)} bytes) - using Python lz4")
+        return
+    except ImportError:
+        print("Python lz4 library not available, falling back to command line tool")
+    except Exception as e:
+        print(f"Python lz4 compression failed: {e}, falling back to command line tool")
+    
+    # Fallback to command line lz4
     with tempfile.NamedTemporaryFile() as tmp_file:
         tmp_file.write(data)
         tmp_file.flush()
         
-        # Use lz4 with --no-frame-crc and --no-frame to get raw LZ4 data
-        # Try different options to get raw LZ4 blocks without frame headers
-        try:
-            result = subprocess.run([
-                'lz4', '--no-frame-crc', '--no-frame', '-c', tmp_file.name
-            ], capture_output=True, check=True)
-        except subprocess.CalledProcessError:
-            # Fallback: try with just --no-frame
-            try:
-                result = subprocess.run([
-                    'lz4', '--no-frame', '-c', tmp_file.name
-                ], capture_output=True, check=True)
-            except subprocess.CalledProcessError:
-                # Final fallback: use basic lz4 and extract raw data
-                result = subprocess.run([
-                    'lz4', '-c', tmp_file.name
-                ], capture_output=True, check=True)
-                # For now, use the full output - DPDK might handle frame format
-                pass
+        # Try different lz4 options to get raw data
+        lz4_options = [
+            ['lz4', '--no-frame', '-c', tmp_file.name],  # No frame format
+            ['lz4', '-BD', '-c', tmp_file.name],         # Disable block dependency
+            ['lz4', '-c', tmp_file.name]                 # Basic compression
+        ]
         
-        with open(output_path, 'wb') as f:
-            f.write(result.stdout)
-    
-    print(f"Created lz4 compressed file: {output_path} ({len(result.stdout)} bytes)")
+        for options in lz4_options:
+            try:
+                result = subprocess.run(options, capture_output=True, check=True)
+                lz4_data = result.stdout
+                
+                # Check if it's frame format and try to extract raw data
+                if len(lz4_data) > 4 and lz4_data[:4] == b'\x04"M\x18':  # LZ4 frame magic
+                    # Skip magic number and try to extract raw blocks
+                    if len(lz4_data) > 8:
+                        raw_lz4 = lz4_data[4:]  # Skip magic number
+                        with open(output_path, 'wb') as f:
+                            f.write(raw_lz4)
+                        print(f"Created raw lz4 compressed file: {output_path} ({len(raw_lz4)} bytes) - extracted from frame")
+                        return
+                
+                # Use the data as-is
+                with open(output_path, 'wb') as f:
+                    f.write(lz4_data)
+                print(f"Created lz4 compressed file: {output_path} ({len(lz4_data)} bytes) - using command line")
+                return
+                
+            except subprocess.CalledProcessError:
+                continue
+        
+        raise RuntimeError("All lz4 compression methods failed")
 
 def create_null_data(data, output_path):
     """Create 'null' compressed data (just copy the original data)."""
