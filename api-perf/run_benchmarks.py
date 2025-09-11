@@ -527,6 +527,19 @@ Optimizations applied:
                 exit_code = rc
 
     # Now run all other benchmarks
+    setup_ran_for: set[tuple[str, str]] = set()
+    template_setup_ran_for: set[str] = set()
+
+    def ensure_setup_once(ran_set, key, command) -> bool:
+        """Run setup command once per key. Returns True if ok or nothing to do."""
+        if not command:
+            return True
+        if key in ran_set:
+            return True
+        ok_local = run_setup_command(command, args.dry_run)
+        if ok_local:
+            ran_set.add(key)
+        return ok_local
     for prefix, func in benchmarks_to_run:
         if func == 'empty':  # Skip empty benchmarks as they were already run
             continue
@@ -536,6 +549,23 @@ Optimizations applied:
         grouped_params = benchmark_full_config.get("grouped_params", {})
         eal_args = benchmark_full_config.get("eal_args", [])
         setup_command = benchmark_full_config.get("setup_command", None)
+
+        # Run template-level setup once per template/prefix
+        template_setup_command = full_config.get("templates", {}).get(prefix, {}).get("setup_command", None)
+        if template_setup_command:
+            if not ensure_setup_once(template_setup_ran_for, prefix, template_setup_command):
+                print(f"Setup command failed for template '{prefix}'", file=sys.stderr)
+                exit_code = 1
+                # Skip this benchmark if template setup failed
+                continue
+
+        # Run setup once per (prefix, func) before the first case
+        if setup_command:
+            if not ensure_setup_once(setup_ran_for, (prefix, func), setup_command):
+                print(f"Setup command failed for {func}", file=sys.stderr)
+                exit_code = 1
+                # Skip running cases for this benchmark on failure
+                continue
         
         # Generate parameter combinations
         if grouped_params:
@@ -575,7 +605,7 @@ Optimizations applied:
                         # Set up environment
                         env = os.environ.copy()
                         
-                        rc, cycles, metadata, stdout, stderr = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=env, case_info=case_info, dry_run=args.dry_run, setup_command=setup_command)
+                        rc, cycles, metadata, stdout, stderr = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=env, case_info=case_info, dry_run=args.dry_run, setup_command=None)
                         
                         if cycles is not None:
                             total_cycles = cycles  # cycles is already total cycles now
@@ -618,7 +648,7 @@ Optimizations applied:
                 # Set up environment
                 env = os.environ.copy()
                 
-                rc, cycles, metadata, stdout, stderr = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=env, case_info=case_info, dry_run=args.dry_run, setup_command=setup_command)
+                rc, cycles, metadata, stdout, stderr = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=env, case_info=case_info, dry_run=args.dry_run, setup_command=None)
                 
                 if cycles is not None:
                     total_cycles = cycles  # cycles is already total cycles now
