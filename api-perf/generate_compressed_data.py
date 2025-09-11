@@ -86,7 +86,7 @@ def compress_with_lz4(data, output_path):
         try:
             # Use lz4 with --no-frame to avoid frame format
             result = subprocess.run([
-                'lz4', '--no-frame', '-c', tmp_file.name
+                'lz4', '-c', tmp_file.name
             ], capture_output=True, check=True)
             
             with open(output_path, 'wb') as f:
