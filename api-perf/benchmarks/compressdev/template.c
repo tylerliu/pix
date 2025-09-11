@@ -1,11 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <rte_eal.h>
 #include <rte_ethdev.h>
 #include <rte_mbuf.h>
 #include <rte_compressdev.h>
-#include <rte_bus_vdev.h>
 
 #include "driver/benchmark_driver.h"
 
@@ -16,7 +14,6 @@ static void *comp_private_xform;
 static void *decomp_private_xform;
 static struct rte_mempool *comp_op_pool;
 static uint64_t total_poll_cycles = 0;
-static bool vdev_initialized = false;
 
 // Compression constants
 #define MAX_COMPRESSED_SIZE 2048
@@ -33,24 +30,10 @@ struct rte_comp_xform comp_xform = {
 };
 
 void setup_compressdev() {
-    // Check if compression devices are already available
+    // Check that compression device is available
     int num_comp_devices = rte_compressdev_count();
-    
-    // If no compression devices are available, initialize compress_zlib virtual device
     if (num_comp_devices < 1) {
-        printf("No compression devices found, initializing compress_zlib virtual device...\n");
-        if (rte_vdev_init("compress_zlib", NULL) < 0) {
-            rte_exit(EXIT_FAILURE, "Failed to initialize compress_zlib virtual device\n");
-        }
-        vdev_initialized = true;
-        
-        // Check again after initialization
-        num_comp_devices = rte_compressdev_count();
-        if (num_comp_devices < 1) {
-            rte_exit(EXIT_FAILURE, "No compression devices available even after initializing virtual device\n");
-        }
-    } else {
-        printf("Found %d existing compression device(s), using existing devices\n", num_comp_devices);
+        rte_exit(EXIT_FAILURE, "No compression devices available\n");
     }
 
     // Get compression device info
@@ -139,12 +122,6 @@ void teardown_compressdev() {
     if (comp_op_pool != NULL) {
         rte_mempool_free(comp_op_pool);
         comp_op_pool = NULL;
-    }
-    
-    // Uninitialize virtual device only if we initialized it
-    if (vdev_initialized) {
-        rte_vdev_uninit("compress_zlib");
-        vdev_initialized = false;
     }
 }
 
