@@ -128,7 +128,6 @@ for (unsigned int i = 0; i < burst_size; i++) {
     op->src.offset = 0;
     op->src.length = file_size;  // Use actual compressed data size
     op->dst.offset = 0;
-    op->dst.flush_flag = RTE_COMP_FLUSH_FINAL;
     
     // Set private xform in the operation
     op->private_xform = new_decomp_private_xform;
