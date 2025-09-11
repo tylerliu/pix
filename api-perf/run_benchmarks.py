@@ -573,106 +573,89 @@ Optimizations applied:
                 continue
         
         # Generate parameter combinations
-        if grouped_params:
-            # Handle grouped parameters
-            param_keys = list(params_dict.keys())
-            param_values = [params_dict[k] for k in param_keys]
+        def run_benchmark_case(regular_params: dict, grouped_params: dict = None):
+            """Run a benchmark case with the given parameter combinations."""
+            param_keys = list(regular_params.keys())
+            param_values = [regular_params[k] for k in param_keys]
             
-            # Generate combinations for each group
-            for group_name, group_list in grouped_params.items():
-                for group_item in group_list:
-                    # Combine regular parameters with grouped parameters
-                    for combo in itertools.product(*param_values):
-                        # Build benchmark (post --) args: params then iterations
-                        benchmark_args: list[str] = []
-                        case_info_parts = []
-                        metadata_params = {}
-                        
-                        # Add regular parameters
-                        for i, key in enumerate(param_keys):
-                            benchmark_args.extend([f"--{key}", str(combo[i])])
-                            case_info_parts.append(f"{key}={combo[i]}")
-                            metadata_params[key] = combo[i]
-                        
-                        # Add grouped parameters
-                        for key, value in group_item.items():
-                            if value is not None:  # Skip null values
-                                benchmark_args.extend([f"--{key}", str(value)])
-                                case_info_parts.append(f"{key}={value}")
-                                metadata_params[key] = value
-                        
-                        benchmark_args.extend(['-i', str(args.iterations)])
-
-                        # Full command: EAL args first, then '--', then benchmark args
-                        cmd_args = eal_args + ['--'] + benchmark_args
-                        case_info = ", ".join(case_info_parts) if case_info_parts else "Default"
-                        
-                        # Set up environment
-                        env = os.environ.copy()
-                        
-                        rc, cycles, metadata, stdout, stderr = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=env, case_info=case_info, dry_run=args.dry_run, setup_command=None)
-                        
-                        if cycles is not None:
-                            total_cycles = cycles  # cycles is already total cycles now
-                            
-                            # Calculate and display cycles per call if empty benchmark data is available
-                            if prefix in empty_cycles and func != 'empty':
-                                empty_cycles_for_prefix = empty_cycles[prefix]
-                                if total_cycles > empty_cycles_for_prefix:
-                                    net_cycles = total_cycles - empty_cycles_for_prefix
-                                    cycles_per_call = net_cycles / args.iterations
-                                    print(f"  → Cycles per call (net): {cycles_per_call:.2f}")
-                            
-                            # Merge metadata from benchmark with parameters
-                            metadata.update(metadata_params)
-                            if csv_writer:
-                                metadata_json = json.dumps(metadata).replace('"', "'")
-                                csv_writer.writerow([func, prefix, args.iterations, total_cycles, metadata_json])
-                        if rc != 0:
-                            exit_code = rc
-        else:
-            # Handle regular parameters (existing logic)
-            param_keys = list(params_dict.keys())
-            param_values = [params_dict[k] for k in param_keys]
+            if grouped_params:
+                # Handle grouped parameters
+                for group_name, group_list in grouped_params.items():
+                    for group_item in group_list:
+                        # Combine regular parameters with grouped parameters
+                        for combo in itertools.product(*param_values):
+                            yield _build_and_run_benchmark_case(
+                                param_keys, combo, group_item, eal_args, args.iterations,
+                                func, prefix, runner, empty_cycles, csv_writer, args.dry_run
+                            )
+            else:
+                # Handle regular parameters only
+                for combo in itertools.product(*param_values):
+                    yield _build_and_run_benchmark_case(
+                        param_keys, combo, None, eal_args, args.iterations,
+                        func, prefix, runner, empty_cycles, csv_writer, args.dry_run
+                    )
+        
+        def _build_and_run_benchmark_case(param_keys, combo, group_item, eal_args, iterations, 
+                                        func, prefix, runner, empty_cycles, csv_writer, dry_run):
+            """Build and run a single benchmark case."""
+            # Build benchmark (post --) args: params then iterations
+            benchmark_args: list[str] = []
+            case_info_parts = []
+            metadata_params = {}
             
-            for combo in itertools.product(*param_values):
-                # Build benchmark (post --) args: params then iterations
-                benchmark_args: list[str] = []
-                case_info_parts = []
-                metadata_params = {}
-                for i, key in enumerate(param_keys):
-                    benchmark_args.extend([f"--{key}", str(combo[i])])
-                    case_info_parts.append(f"{key}={combo[i]}")
-                    metadata_params[key] = combo[i]
-                benchmark_args.extend(['-i', str(args.iterations)])
+            # Add regular parameters
+            for i, key in enumerate(param_keys):
+                benchmark_args.extend([f"--{key}", str(combo[i])])
+                case_info_parts.append(f"{key}={combo[i]}")
+                metadata_params[key] = combo[i]
+            
+            # Add grouped parameters if provided
+            if group_item:
+                for key, value in group_item.items():
+                    if value is not None:  # Skip null values
+                        benchmark_args.extend([f"--{key}", str(value)])
+                        case_info_parts.append(f"{key}={value}")
+                        metadata_params[key] = value
+            
+            benchmark_args.extend(['-i', str(iterations)])
 
-                # Full command: EAL args first, then '--', then benchmark args
-                cmd_args = eal_args + ['--'] + benchmark_args
-                case_info = ", ".join(case_info_parts) if case_info_parts else "Default"
+            # Full command: EAL args first, then '--', then benchmark args
+            cmd_args = eal_args + ['--'] + benchmark_args
+            case_info = ", ".join(case_info_parts) if case_info_parts else "Default"
+            
+            # Set up environment
+            env = os.environ.copy()
+            
+            rc, cycles, metadata, stdout, stderr = run_benchmark(
+                func, build_dir=args.build_dir, prefix=prefix, runner=runner, 
+                cmd_args=cmd_args, env=env, case_info=case_info, dry_run=dry_run, 
+                setup_command=None
+            )
+            
+            if cycles is not None:
+                total_cycles = cycles  # cycles is already total cycles now
                 
-                # Set up environment
-                env = os.environ.copy()
+                # Calculate and display cycles per call if empty benchmark data is available
+                if prefix in empty_cycles and func != 'empty':
+                    empty_cycles_for_prefix = empty_cycles[prefix]
+                    if total_cycles > empty_cycles_for_prefix:
+                        net_cycles = total_cycles - empty_cycles_for_prefix
+                        cycles_per_call = net_cycles / iterations
+                        print(f"  → Cycles per call (net): {cycles_per_call:.2f}")
                 
-                rc, cycles, metadata, stdout, stderr = run_benchmark(func, build_dir=args.build_dir, prefix=prefix, runner=runner, cmd_args=cmd_args, env=env, case_info=case_info, dry_run=args.dry_run, setup_command=None)
-                
-                if cycles is not None:
-                    total_cycles = cycles  # cycles is already total cycles now
-                    
-                    # Calculate and display cycles per call if empty benchmark data is available
-                    if prefix in empty_cycles and func != 'empty':
-                        empty_cycles_for_prefix = empty_cycles[prefix]
-                        if total_cycles > empty_cycles_for_prefix:
-                            net_cycles = total_cycles - empty_cycles_for_prefix
-                            cycles_per_call = net_cycles / args.iterations
-                            print(f"  → Cycles per call (net): {cycles_per_call:.2f}")
-                    
-                    # Merge metadata from benchmark with parameters
-                    metadata.update(metadata_params)
-                    if csv_writer:
-                        metadata_json = json.dumps(metadata).replace('"', "'")
-                        csv_writer.writerow([func, prefix, args.iterations, total_cycles, metadata_json])
-                if rc != 0:
-                    exit_code = rc
+                # Merge metadata from benchmark with parameters
+                metadata.update(metadata_params)
+                if csv_writer:
+                    metadata_json = json.dumps(metadata).replace('"', "'")
+                    csv_writer.writerow([func, prefix, iterations, total_cycles, metadata_json])
+            
+            return rc
+        
+        # Run all benchmark cases
+        for rc in run_benchmark_case(params_dict, grouped_params):
+            if rc != 0:
+                exit_code = rc
 
     if csv_file:
         csv_file.flush()
