@@ -4,7 +4,7 @@
             "eal_args": ["-a", "03:00.0,class=crypto,algo=1"]
         },
         "compressdev": {
-            "eal_args": ["--vdev", "compress_isal"]
+            "eal_args": ["-a", "03:00.0,class=compress"]
         },
         "dpdk": {
             "eal_args": ["-a", "auxiliary:mlx5_core.sf.4"]
