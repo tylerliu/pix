@@ -391,9 +391,6 @@ def generate_function_latency_map(df, correlations):
             for combo in categorical_combinations:
                 combo_group = filter_group_by_categorical_combo(group, combo)
                 
-                if len(combo_group) < 2:
-                    continue
-                
                 case_name = create_case_name(combo)
                 case_data = generate_case_data(combo_group, function, case_name, correlations)
                 
