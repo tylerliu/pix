@@ -253,6 +253,23 @@ def analyze_numerical_parameters(group, numerical_params, *, alpha=0.05, min_uni
                         'n_samples': int(valid_mask.sum())
                     }
                     candidate_params.append(param)
+        elif param == 'data_moved':
+            # Engineered: data_moved = burst_size * data_size
+            # Only compute when both exist for the row
+            bs = group['metadata_parsed'].apply(lambda m: m.get('burst_size', np.nan))
+            ds = group['metadata_parsed'].apply(lambda m: m.get('data_size', np.nan))
+            x_vals = (bs.astype(float) * ds.astype(float))
+            valid_mask = ~(x_vals.isna())
+            if valid_mask.sum() > 1 and x_vals[valid_mask].nunique() >= min_unique_values:
+                xv = x_vals[valid_mask].to_numpy()
+                yv = group.loc[valid_mask, 'latency_per_operation'].to_numpy()
+                slope, intercept, _, _, _ = linregress(xv, yv)
+                correlations[param] = {
+                    'coefficient': float(slope),
+                    'intercept': float(intercept),
+                    'n_samples': int(valid_mask.sum())
+                }
+                candidate_params.append(param)
 
     # If <2 candidates, partial correlation is not defined; fall back to regular correlation
     if len(candidate_params) < 2:
@@ -278,8 +295,23 @@ def analyze_numerical_parameters(group, numerical_params, *, alpha=0.05, min_uni
     y_all = []
     for _, row in group.iterrows():
         meta = row['metadata_parsed']
-        if all((k in meta) and pd.notna(meta[k]) for k in candidate_params):
-            X_all.append([meta[k] for k in candidate_params])
+        row_vals = []
+        ok = True
+        for k in candidate_params:
+            if k == 'data_moved':
+                bs = meta.get('burst_size', np.nan)
+                ds = meta.get('data_size', np.nan)
+                if pd.isna(bs) or pd.isna(ds):
+                    ok = False
+                    break
+                row_vals.append(float(bs) * float(ds))
+            else:
+                if (k not in meta) or pd.isna(meta[k]):
+                    ok = False
+                    break
+                row_vals.append(meta[k])
+        if ok:
+            X_all.append(row_vals)
             y_all.append(row['latency_per_operation'])
     if not X_all:
         for p in candidate_params:
@@ -332,14 +364,27 @@ def analyze_correlations(df, exclude_polling=False):
                     continue
                 
                 # Analyze numerical parameters for this categorical case
-                case_correlations = analyze_numerical_parameters(combo_group, numerical_params)
+                extended_params = set(numerical_params)
+                # Add engineered product if both exist with variation
+                if combo_group['metadata_parsed'].apply(lambda m: 'burst_size' in m and 'data_size' in m).any():
+                    bs = combo_group['metadata_parsed'].apply(lambda m: m.get('burst_size', np.nan))
+                    ds = combo_group['metadata_parsed'].apply(lambda m: m.get('data_size', np.nan))
+                    if bs.dropna().nunique() > 1 and ds.dropna().nunique() > 1:
+                        extended_params.add('data_moved')  # burst_size * data_size
+                case_correlations = analyze_numerical_parameters(combo_group, extended_params)
                 
                 if case_correlations:
                     case_name = create_case_name(combo)
                     func_correlations[case_name] = case_correlations
         else:
             # No categorical parameters, analyze all numerical parameters together
-            case_correlations = analyze_numerical_parameters(group, numerical_params)
+            extended_params = set(numerical_params)
+            if group['metadata_parsed'].apply(lambda m: 'burst_size' in m and 'data_size' in m).any():
+                bs = group['metadata_parsed'].apply(lambda m: m.get('burst_size', np.nan))
+                ds = group['metadata_parsed'].apply(lambda m: m.get('data_size', np.nan))
+                if bs.dropna().nunique() > 1 and ds.dropna().nunique() > 1:
+                    extended_params.add('data_moved')
+            case_correlations = analyze_numerical_parameters(group, extended_params)
             if case_correlations:
                 func_correlations = case_correlations
         
@@ -360,7 +405,16 @@ def perform_multivariate_regression(group, significant_params):
         metadata = row['metadata_parsed']
         x_row = [1.0]
         for param in significant_params:
-            x_row.append(metadata.get(param, 0))
+            if param == 'data_moved':
+                bs = metadata.get('burst_size', np.nan)
+                ds = metadata.get('data_size', np.nan)
+                try:
+                    value = float(bs) * float(ds)
+                except (TypeError, ValueError):
+                    value = 0.0
+                x_row.append(value)
+            else:
+                x_row.append(metadata.get(param, 0))
         X.append(x_row)
     X = np.array(X, dtype=float)
 
