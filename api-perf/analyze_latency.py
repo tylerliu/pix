@@ -159,14 +159,6 @@ def calculate_latency(df):
             packets = metadata['total_packets_sent']
             if packets > 0:
                 return row['net_cycles'] / packets
-        elif 'total_poll_cycles' in metadata:
-            # For cryptodev-wait benchmarks, we need to subtract empty overhead from polling cycles too
-            poll_cycles = metadata['total_poll_cycles']
-            if row['prefix'] in empty_overhead:
-                overhead_per_iteration = empty_overhead[row['prefix']]
-                total_overhead = overhead_per_iteration * row['iterations']
-                poll_cycles = max(0, poll_cycles - total_overhead)
-            return poll_cycles / row['iterations']
         
         return row['latency_cycles']
     
